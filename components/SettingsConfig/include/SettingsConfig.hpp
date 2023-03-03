@@ -71,7 +71,10 @@ class SettingsConfig
         string WeatherProvider;     // OpenWeatherMap
         string WeatherLocation;            // Bangalore, India
         string WeatherAPIkey;              // "ABCD..."
+        string CoinMarketCapAPIProvider;   // https://sandbox-api.coinmarketcap.com/
+        string CoinMarketCapAPIkey;        // "1sd9-2af5..."
         uint WeatherUpdateInterval;        // in seconds
+        uint CoinUpdateInterval;        // in seconds
         weather_units_t TemperatureUnits;
 
         //SettingsConfig();

@@ -55,8 +55,8 @@ SOFTWARE.
 
 
 /*** Setup screen resolution for LVGL ***/
-static const uint16_t screenWidth = TFT_WIDTH;
-static const uint16_t screenHeight = TFT_HEIGHT;
+static const uint16_t screenWidth = TFT_HEIGHT;
+static const uint16_t screenHeight = TFT_WIDTH;
 
 #define BUFF_SIZE 40
 #define LVGL_DOUBLE_BUFFER
@@ -86,9 +86,9 @@ static void lv_tick_task(void *arg);
 esp_err_t lv_display_init()
 {
     // Setting display to landscape
-    // if (lcd.width() < lcd.height()) lcd.setRotation(lcd.getRotation() ^ 2);
+    //if (lcd.width() < lcd.height()) lcd.setRotation(lcd.getRotation() ^ 2);
 
-    lcd.setRotation(2);
+    lcd.setRotation(1);
     lcd.setColorDepth(16);
     lcd.setBrightness(128);
     //lcd.fillScreen(TFT_BLACK);

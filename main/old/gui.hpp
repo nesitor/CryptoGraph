@@ -32,7 +32,6 @@ SOFTWARE.
 #include <esp_partition.h>
 
 LV_IMG_DECLARE(dev_bg)
-LV_IMG_DECLARE(img_btc)
 //LV_IMG_DECLARE(tux_logo)
 
 // LV_FONT_DECLARE(font_7seg_64)
@@ -56,7 +55,6 @@ LV_FONT_DECLARE(font_fa_14)
 /******************
  *  LV DEFINES
  ******************/
-static const lv_font_t *font_small;
 static const lv_font_t *font_large;
 static const lv_font_t *font_normal;
 static const lv_font_t *font_symbol;
@@ -71,35 +69,8 @@ static lv_obj_t *content_container;
 static lv_obj_t *screen_container;
 static lv_obj_t *qr_status_container;
 
-// Screen Definitions
-
-static lv_obj_t * ui_mainScreen;
-static lv_obj_t * ui_cryptoPanel;
-static lv_obj_t * ui_titleCryptoPanel;
-static lv_obj_t * ui_cryptoImage;
-static lv_obj_t * ui_cryptoLabel;
-static lv_obj_t * ui_priceLabel;
-static lv_obj_t * ui_assetsCryptoPanel;
-static lv_obj_t * ui_amountLabel;
-static lv_obj_t * ui_changesCryptoPanel1;
-static lv_obj_t * ui_changesLabel1;
-static lv_obj_t * ui_divisorLabel1;
-static lv_obj_t * ui_changesLabel2;
-static lv_obj_t * ui_divisorLabel2;
-static lv_obj_t * ui_changesLabel3;
-static lv_obj_t * ui_cryptoChart;
-static lv_obj_t * ui_toolPanel;
-static lv_obj_t * ui_configButton;
-static lv_obj_t * ui_configScreen;
-static lv_obj_t * ui_configPanel;
-static lv_obj_t * ui_closeButton;
-static lv_obj_t * ui_ipLabel;
-static lv_obj_t * ui_qrImage;
-static lv_obj_t * ui_wifiResetButton;
-
 // TUX Panels
 static lv_obj_t *tux_clock_weather;
-static lv_obj_t *chart_panel;
 
 static lv_obj_t *island_wifi;
 static lv_obj_t *island_ota;
@@ -163,13 +134,6 @@ static lv_style_t style_battery;
 static lv_style_t style_ui_island;
 
 static lv_style_t style_glow;
-
-static lv_style_t style_win;
-static lv_style_t style_loose;
-static lv_style_t style_change;
-static lv_style_t style_change_divisor;
-static lv_style_t style_price;
-static lv_style_t style_amount;
 
 /******************
  *  LVL ANIMATION
@@ -241,7 +205,6 @@ void lv_setup_styles()
     font_symbol = &lv_font_montserrat_14;
     font_normal = &lv_font_montserrat_14;
     font_large = &lv_font_montserrat_16;
-    font_small = &lv_font_montserrat_10;
     font_xl = &lv_font_montserrat_24;
     font_xxl = &lv_font_montserrat_32;
     font_fa = &font_fa_14;
@@ -251,8 +214,35 @@ void lv_setup_styles()
 
     /* CONTENT CONTAINER BACKGROUND */
     lv_style_init(&style_content_bg);
-    lv_style_set_bg_opa(&style_content_bg, LV_OPA_0);
+    lv_style_set_bg_opa(&style_content_bg, LV_OPA_50);
     lv_style_set_radius(&style_content_bg, 0);
+
+// Enabling wallpaper image slows down scrolling perf etc...
+#if defined(CONFIG_WALLPAPER_IMAGE)
+    // Image Background
+    // CF_INDEXED_8_BIT for smaller size - resolution 480x480
+    // NOTE: Dynamic loading bg from SPIFF makes screen perf bad
+    if (lv_fs_is_ready('F')) { // NO SD CARD load default
+        ESP_LOGW(TAG,"Loading - F:/bg/dev_bg9.bin");
+        lv_style_set_bg_img_src(&style_content_bg, "F:/bg/dev_bg9.bin");    
+    } else {
+        ESP_LOGW(TAG,"Loading - from firmware");
+        lv_style_set_bg_img_src(&style_content_bg, &dev_bg);
+    }
+    //lv_style_set_bg_img_src(&style_content_bg, &dev_bg);
+    // lv_style_set_bg_img_opa(&style_content_bg,LV_OPA_50);
+#else
+    ESP_LOGW(TAG,"Using Gradient");
+    // Gradient Background
+    static lv_grad_dsc_t grad;
+    grad.dir = LV_GRAD_DIR_VER;
+    grad.stops_count = 2;
+    grad.stops[0].color = lv_color_make(31,32,34) ;
+    grad.stops[1].color = lv_palette_main(LV_PALETTE_BLUE);
+    grad.stops[0].frac = 150;
+    grad.stops[1].frac = 190;
+    lv_style_set_bg_grad(&style_content_bg, &grad);
+#endif
 
     // DASHBOARD TITLE
     lv_style_init(&style_title);
@@ -299,8 +289,8 @@ void lv_setup_styles()
 
     // FOOTER MESSAGE & ANIMATION
     lv_anim_init(&anim_labelscroll);
-    //lv_anim_set_delay(&anim_labelscroll, 1000);        // Wait 1 second to start the first scroll
-    lv_anim_set_repeat_delay(&anim_labelscroll, 1000); // Repeat the scroll 3 seconds after the label scrolls back to the initial position
+    lv_anim_set_delay(&anim_labelscroll, 1000);        // Wait 1 second to start the first scroll
+    lv_anim_set_repeat_delay(&anim_labelscroll, 3000); // Repeat the scroll 3 seconds after the label scrolls back to the initial position
 
     lv_style_init(&style_message);
     lv_style_set_anim(&style_message, &anim_labelscroll); // Set animation for the style
@@ -320,52 +310,11 @@ void lv_setup_styles()
     lv_style_set_border_width(&style_ui_island, 1);
     lv_style_set_radius(&style_ui_island, 10);
 
-    // PRICE STYLES
-    lv_style_init(&style_win);
-    lv_style_set_text_color(&style_win, lv_color_hex(0x007A06));
-
-    lv_style_init(&style_loose);
-    lv_style_set_text_color(&style_loose, lv_color_hex(0x910000));
-
-    lv_style_init(&style_change);
-    lv_style_set_width(&style_change, LV_SIZE_CONTENT);
-    lv_style_set_height(&style_change, LV_SIZE_CONTENT);
-    lv_style_set_align(&style_change, LV_ALIGN_RIGHT_MID);
-    lv_style_set_text_opa(&style_change, 255);
-    lv_style_set_text_align(&style_change, LV_TEXT_ALIGN_LEFT);
-    lv_style_set_text_font(&style_change, font_small);
-
-    lv_style_init(&style_change_divisor);
-    lv_style_set_width(&style_change_divisor, LV_SIZE_CONTENT);
-    lv_style_set_height(&style_change_divisor, LV_SIZE_CONTENT);
-    lv_style_set_align(&style_change_divisor, LV_ALIGN_RIGHT_MID);
-    lv_style_set_text_color(&style_change_divisor, lv_color_hex(0x5D5D5D));
-    lv_style_set_text_opa(&style_change_divisor, 255);
-    lv_style_set_text_align(&style_change_divisor, LV_TEXT_ALIGN_LEFT);
-    lv_style_set_text_font(&style_change_divisor, font_small);
-
-    lv_style_init(&style_price);
-    lv_style_set_width(&style_price, LV_SIZE_CONTENT);
-    lv_style_set_height(&style_price, LV_SIZE_CONTENT);
-    lv_style_set_align(&style_price, LV_ALIGN_RIGHT_MID);
-    lv_style_set_text_color(&style_price, lv_color_hex(0x910000));
-    lv_style_set_text_opa(&style_price, 255);
-
-    lv_style_init(&style_amount);
-    lv_style_set_align(&style_amount, LV_ALIGN_LEFT_MID);
-    lv_style_set_text_color(&style_amount, lv_color_hex(0x910000));
-    lv_style_set_text_opa(&style_amount, 255);
-    lv_style_set_text_align(&style_amount, LV_TEXT_ALIGN_AUTO);
-    lv_style_set_pad_left(&style_amount, 0);
-    lv_style_set_pad_right(&style_amount, 0);
-    lv_style_set_pad_top(&style_amount, 0);
-    lv_style_set_pad_bottom(&style_amount, 0);
-
     // FOOTER NAV BUTTONS
-    //lv_style_init(&style_glow);
-    //lv_style_set_bg_opa(&style_glow, LV_OPA_COVER);
-    //lv_style_set_border_width(&style_glow,0);
-    //lv_style_set_bg_color(&style_glow, lv_palette_main(LV_PALETTE_RED));
+    lv_style_init(&style_glow);
+    lv_style_set_bg_opa(&style_glow, LV_OPA_COVER);
+    lv_style_set_border_width(&style_glow,0);
+    lv_style_set_bg_color(&style_glow, lv_palette_main(LV_PALETTE_RED));
 
     /*Add a shadow*/
     // lv_style_set_shadow_width(&style_glow, 10);
@@ -418,8 +367,8 @@ static void create_header(lv_obj_t *parent)
     lv_label_set_text(icon_battery, LV_SYMBOL_CHARGE);
     lv_obj_add_style(icon_battery, &style_battery, 0);
 
-    lv_obj_add_event_cb(panel_title, home_clicked_eventhandler, LV_EVENT_CLICKED, NULL);
-    lv_obj_add_event_cb(panel_status, status_clicked_eventhandler, LV_EVENT_CLICKED, NULL);
+    // lv_obj_add_event_cb(panel_title, home_clicked_eventhandler, LV_EVENT_CLICKED, NULL);
+    // lv_obj_add_event_cb(panel_status, status_clicked_eventhandler, LV_EVENT_CLICKED, NULL);
 }
 
 static void create_footer(lv_obj_t *parent)
@@ -628,7 +577,7 @@ static void tux_panel_wifi(lv_obj_t *parent)
     lv_obj_align(lbl_wifi_status, LV_ALIGN_LEFT_MID, 0, 0);
     lv_label_set_text(lbl_wifi_status, "Waiting for IP");
 
-    // Reset wi-fi settings button
+    // Check for Updates button
     lv_obj_t *btn_unprov = lv_btn_create(cont_1);
     lv_obj_set_size(btn_unprov, LV_SIZE_CONTENT, 40);
     lv_obj_align(btn_unprov, LV_ALIGN_CENTER, 0, 0);
@@ -655,7 +604,7 @@ static void tux_panel_wifi(lv_obj_t *parent)
 
     /* Set data - format of BLE provisioning data */
     // {"ver":"v1","name":"TUX_4AA440","pop":"abcd1234","transport":"ble"}
-    const char *qrdata = "https://github.com/nesitor/CryptoChart";
+    const char *qrdata = "https://github.com/sukesh-ak/ESP32-TUX";
     lv_qrcode_update(prov_qr, qrdata, strlen(qrdata));
 
     /*Add a border with bg_color*/
@@ -664,7 +613,7 @@ static void tux_panel_wifi(lv_obj_t *parent)
 
     lbl_scan_status = lv_label_create(qr_status_container);
     lv_obj_set_size(lbl_scan_status, LV_SIZE_CONTENT, 30);
-    lv_label_set_text(lbl_scan_status, "Scan to learn about CryptoChart");
+    lv_label_set_text(lbl_scan_status, "Scan to learn about ESP32-TUX");
 
 }
 
@@ -766,6 +715,57 @@ static void graph_event_handler(lv_event_t * e)
     }
 }
 
+static void tux_panel_crypto(lv_obj_t *parent)
+{
+    island_crypto = tux_panel_create(parent, " ", 250);
+    lv_obj_add_style(island_crypto, &style_ui_island, 0);
+
+    // Get Content Area to add UI elements
+    lv_obj_t *cont_crypto = tux_panel_get_content(island_crypto);
+
+    lv_obj_set_flex_flow(cont_crypto, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_flex_align(cont_crypto, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_END);
+
+    ui_Chart2 = lv_chart_create(cont_crypto);
+    lv_obj_set_size(ui_Chart2, 380, 210);
+    lv_obj_align(ui_Chart2, LV_ALIGN_CENTER, 13, 30);
+    lv_chart_set_type(ui_Chart2, LV_CHART_TYPE_LINE);
+    lv_chart_set_range(ui_Chart2, LV_CHART_AXIS_SECONDARY_Y, 0, 0);
+    lv_chart_set_axis_tick(ui_Chart2, LV_CHART_AXIS_PRIMARY_X, 0, 0, 5, 2, false, 50);
+    lv_chart_set_axis_tick(ui_Chart2, LV_CHART_AXIS_PRIMARY_Y, 10, 5, 5, 2, true, 50);
+    lv_obj_add_event_cb(ui_Chart2, graph_event_handler, LV_EVENT_ALL, NULL);
+    lv_obj_refresh_ext_draw_size(ui_Chart2);
+    cursor = lv_chart_add_cursor(ui_Chart2, lv_palette_main(LV_PALETTE_BLUE), LV_DIR_LEFT | LV_DIR_BOTTOM);
+    lv_chart_series_t * ui_Chart2_series_1 = lv_chart_add_series(ui_Chart2, lv_color_hex(0xFF8C00),
+                                                                 LV_CHART_AXIS_PRIMARY_Y);
+    static lv_coord_t ui_Chart2_series_1_array[] = { 0, 10, 20, 40, 80, 80, 40, 20, 10, 0 };
+    lv_chart_set_ext_y_array(ui_Chart2, ui_Chart2_series_1, ui_Chart2_series_1_array);
+
+    ui_Label2 = lv_label_create(ui_Screen1);
+    lv_obj_set_size(ui_Label2, LV_SIZE_CONTENT, 30);
+    lv_obj_align(ui_Label2, LV_ALIGN_CENTER, 35, 0);
+    lv_label_set_text(ui_Label2, "Bitcoin / USD");
+    lv_obj_set_style_text_color(ui_Label2, lv_color_hex(0xFF8C00), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_Label2, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    ui_Image2 = lv_img_create(ui_Screen1);
+    lv_img_set_src(ui_Image2, "F:/images/bitcoin.bin");
+    lv_obj_set_width(ui_Image2, LV_SIZE_CONTENT);   /// 1
+    lv_obj_set_height(ui_Image2, LV_SIZE_CONTENT);    /// 1
+    lv_obj_set_x(ui_Image2, -35);
+    lv_obj_set_y(ui_Image2, -123);
+    lv_obj_set_align(ui_Image2, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_Image2, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
+    lv_obj_clear_flag(ui_Image2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_img_set_zoom(ui_Image2, 100); 
+}
+
+static void create_page_crypto(lv_obj_t *parent)
+{
+    /* Crypto PAGE PANELS */
+    tux_panel_crypto(parent);
+}
+
 static void create_page_home(lv_obj_t *parent)
 {
     /* HOME PAGE PANELS */
@@ -773,158 +773,11 @@ static void create_page_home(lv_obj_t *parent)
     //tux_panel_devinfo(parent);  
 }
 
-///////////////////// SCREENS ////////////////////
-void create_page_crypto(lv_obj_t *parent)
-{
-    ui_cryptoPanel = lv_obj_create(parent);
-    lv_obj_set_size(ui_cryptoPanel, 440, screenHeight - HEADER_HEIGHT - 10);
-    lv_obj_set_align(ui_cryptoPanel, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_cryptoPanel, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_radius(ui_cryptoPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_cryptoPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_cryptoPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_cryptoPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_cryptoPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_titleCryptoPanel = lv_obj_create(ui_cryptoPanel);
-    lv_obj_set_width(ui_titleCryptoPanel, 440);
-    lv_obj_set_height(ui_titleCryptoPanel, 25);
-    lv_obj_set_x(ui_titleCryptoPanel, 0);
-    lv_obj_set_y(ui_titleCryptoPanel, -119);
-    lv_obj_set_align(ui_titleCryptoPanel, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_titleCryptoPanel, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_radius(ui_titleCryptoPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_titleCryptoPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_titleCryptoPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_titleCryptoPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_titleCryptoPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_cryptoImage = lv_img_create(ui_titleCryptoPanel);
-    lv_img_set_src(ui_cryptoImage, &img_btc);
-    lv_obj_set_width(ui_cryptoImage, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_cryptoImage, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_x(ui_cryptoImage, -32);
-    lv_obj_set_y(ui_cryptoImage, 0);
-    lv_obj_set_align(ui_cryptoImage, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_cryptoImage, LV_OBJ_FLAG_ADV_HITTEST);     /// Flags
-    lv_obj_clear_flag(ui_cryptoImage, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_img_set_zoom(ui_cryptoImage, 100);
-
-    ui_cryptoLabel = lv_label_create(ui_titleCryptoPanel);
-    lv_obj_set_width(ui_cryptoLabel, LV_SIZE_CONTENT);   /// 1
-    lv_obj_set_height(ui_cryptoLabel, LV_SIZE_CONTENT);    /// 1
-    lv_obj_set_x(ui_cryptoLabel, 20);
-    lv_obj_set_y(ui_cryptoLabel, 0);
-    lv_obj_set_align(ui_cryptoLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_cryptoLabel, "Bitcoin / USD");
-    lv_obj_set_style_text_color(ui_cryptoLabel, lv_color_hex(0xFF8C00), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_opa(ui_cryptoLabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_priceLabel = lv_label_create(ui_titleCryptoPanel);
-    lv_obj_add_style(ui_priceLabel, &style_price, 0);
-    lv_label_set_text(ui_priceLabel, "$ 25.253");
-
-    ui_assetsCryptoPanel = lv_obj_create(ui_cryptoPanel);
-    lv_obj_set_width(ui_assetsCryptoPanel, 440);
-    lv_obj_set_height(ui_assetsCryptoPanel, 40);
-    lv_obj_set_x(ui_assetsCryptoPanel, 0);
-    lv_obj_set_y(ui_assetsCryptoPanel, -91);
-    lv_obj_set_align(ui_assetsCryptoPanel, LV_ALIGN_CENTER);
-    lv_obj_clear_flag(ui_assetsCryptoPanel, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_radius(ui_assetsCryptoPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_assetsCryptoPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_assetsCryptoPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_assetsCryptoPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_assetsCryptoPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_amountLabel = lv_label_create(ui_assetsCryptoPanel);
-    lv_obj_set_width(ui_amountLabel, 220);
-    lv_obj_set_height(ui_amountLabel, 15);
-    lv_obj_set_x(ui_amountLabel, -10);
-    lv_obj_set_y(ui_amountLabel, 0);
-    lv_obj_add_style(ui_amountLabel, &style_amount, 0);
-    lv_label_set_text(ui_amountLabel, "0.03536482 BTC | 2.205 US$");
-
-    ui_changesCryptoPanel1 = lv_obj_create(ui_assetsCryptoPanel);
-    lv_obj_set_width(ui_changesCryptoPanel1, 190);
-    lv_obj_set_height(ui_changesCryptoPanel1, 15);
-    lv_obj_set_align(ui_changesCryptoPanel1, LV_ALIGN_RIGHT_MID);
-    lv_obj_set_flex_flow(ui_changesCryptoPanel1, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_flex_align(ui_changesCryptoPanel1, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
-    lv_obj_clear_flag(ui_changesCryptoPanel1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_radius(ui_changesCryptoPanel1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_changesCryptoPanel1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_changesCryptoPanel1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_changesCryptoPanel1, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_changesCryptoPanel1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_left(ui_changesCryptoPanel1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_right(ui_changesCryptoPanel1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui_changesCryptoPanel1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_bottom(ui_changesCryptoPanel1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_row(ui_changesCryptoPanel1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_column(ui_changesCryptoPanel1, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_changesLabel1 = lv_label_create(ui_changesCryptoPanel1);
-    lv_obj_add_style(ui_changesLabel1, &style_change, 0);
-    lv_obj_add_style(ui_changesLabel1, &style_win, 0);
-    lv_label_set_text(ui_changesLabel1, "1H:  - 23%");
-
-    ui_divisorLabel1 = lv_label_create(ui_changesCryptoPanel1);
-    lv_obj_add_style(ui_divisorLabel1, &style_change_divisor, 0);
-    lv_label_set_text(ui_divisorLabel1, " | ");
-
-    ui_changesLabel2 = lv_label_create(ui_changesCryptoPanel1);
-    lv_obj_add_style(ui_changesLabel2, &style_change, 0);
-    lv_obj_add_style(ui_changesLabel2, &style_loose, 0);
-    lv_label_set_text(ui_changesLabel2, " 1D: + 1.05%");
-
-    ui_divisorLabel2 = lv_label_create(ui_changesCryptoPanel1);
-    lv_obj_add_style(ui_divisorLabel1, &style_change_divisor, 0);
-    lv_label_set_text(ui_divisorLabel2, " | ");
-
-    ui_changesLabel3 = lv_label_create(ui_changesCryptoPanel1);
-    lv_obj_add_style(ui_changesLabel3, &style_change, 0);
-    lv_obj_add_style(ui_changesLabel3, &style_win, 0);
-    lv_label_set_text(ui_changesLabel3, "7D: - 50%");
-
-    // CHART
-    chart = lv_chart_create(ui_cryptoPanel);
-    lv_obj_set_size(chart, 420, 190);
-    lv_obj_align(chart, LV_ALIGN_CENTER, 0, 35);
-
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 0, 0, 0, 0, true, 50);
-    lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 0, 0, 5, 2, true, 50);
-
-    lv_obj_add_event_cb(chart, graph_event_handler, LV_EVENT_ALL, NULL);
-    lv_obj_refresh_ext_draw_size(chart);
-
-    cursor = lv_chart_add_cursor(chart, lv_palette_main(LV_PALETTE_BLUE), LV_DIR_LEFT | LV_DIR_BOTTOM);
-
-    ser = lv_chart_add_series(chart, lv_color_hex(0xFF8C00), LV_CHART_AXIS_PRIMARY_Y);
-    uint32_t i;
-    for(i = 0; i < 10; i++) {
-        lv_chart_set_next_value(chart, ser, lv_rand(10,90));
-    }
-
-    lv_obj_set_style_radius(chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(chart, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(chart, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_outline_width(chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_outline_pad(chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    lv_obj_set_style_bg_color(chart, lv_color_hex(0x000000), LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(chart, 0, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-    lv_obj_set_style_size(chart, 0, LV_PART_INDICATOR | LV_STATE_DEFAULT);
-
-}
-
 static void create_page_settings(lv_obj_t *parent)
 {
     /* SETTINGS PAGE PANELS */
     tux_panel_wifi(parent);
-    //tux_panel_config(parent);
+    tux_panel_config(parent);
 }
 
 static void create_page_updates(lv_obj_t *parent)
@@ -957,23 +810,25 @@ static void show_ui()
     lv_obj_set_style_border_width(screen_container, 0, 0);
     lv_obj_set_scrollbar_mode(screen_container, LV_SCROLLBAR_MODE_OFF);
 
+    // Gradient / Image Background for screen container
+    lv_obj_add_style(screen_container, &style_content_bg, 0);
+
     // HEADER & FOOTER
     create_header(screen_container);
-    //create_footer(screen_container);
+    create_footer(screen_container);
 
     // CONTENT CONTAINER 
     content_container = lv_obj_create(screen_container);
-    lv_obj_set_size(content_container, screen_w, screen_h - HEADER_HEIGHT);
+    lv_obj_set_size(content_container, screen_w, screen_h - HEADER_HEIGHT - FOOTER_HEIGHT);
     lv_obj_align(content_container, LV_ALIGN_TOP_MID, 0, HEADER_HEIGHT);
     lv_obj_set_style_border_width(content_container, 0, 0);
     lv_obj_set_style_bg_opa(content_container, LV_OPA_TRANSP, 0);
 
     lv_obj_set_flex_flow(content_container, LV_FLEX_FLOW_COLUMN);
-    lv_obj_clear_flag(content_container, LV_OBJ_FLAG_SCROLLABLE);
 
     // Show Home Page
-    create_page_crypto(content_container);
-    create_page_settings(content_container);
+    create_page_home(content_container);
+    //create_page_settings(content_container);
     //create_page_crypto(content_container);
 
     // Load main screen with animation
@@ -1067,7 +922,7 @@ static void home_clicked_eventhandler(lv_event_t *e)
     // footer_message("Home clicked!");
     //  Clean the content container first
     lv_obj_clean(content_container);
-    create_page_crypto(content_container);
+    create_page_home(content_container);
 }
 
 static void status_clicked_eventhandler(lv_event_t *e)

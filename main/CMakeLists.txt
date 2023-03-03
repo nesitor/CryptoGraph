@@ -1,6 +1,7 @@
 idf_component_register(SRCS "main.cpp" 
 					"widgets/tux_panel.c" 
 					"images/dev_bg.c"
+					"images/btc.c"
 
 					# Status icons like BLE
 					"fonts/font_fa_14.c" 

@@ -32,7 +32,7 @@ esp_err_t init_spiff()
     esp_vfs_spiffs_conf_t conf = {
       .base_path = "/spiffs",
       .partition_label = NULL,
-      .max_files = 5,
+      .max_files = 10,
       .format_if_mount_failed = false
     };
 
