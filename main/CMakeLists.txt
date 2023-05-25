@@ -24,7 +24,7 @@ idf_component_register(SRCS "main.cpp"
 					"fonts/font_7seg_56.c"
 
                 INCLUDE_DIRS "." "devices" "helpers" "pages" "widgets" "images"
-				REQUIRES json LovyanGFX lvgl fatfs fmt SettingsConfig OpenWeatherMap spi_flash
+				REQUIRES json LovyanGFX lvgl fatfs fmt SettingsConfig OpenWeatherMap CoinMarketCap spi_flash
 				app_update ota esp_event esp_timer esp_wifi wifi_provisioning spiffs esp_partition
 				esp_hw_support
 				)

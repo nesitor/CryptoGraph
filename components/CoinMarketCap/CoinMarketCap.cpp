@@ -48,12 +48,13 @@ static const char* TAG = "CoinMarketCap";
     If device is disconnected from internet or fails, it will show the last weather update
 */
 
+#define MAX_HTTP_RECV_BUFFER 512
 #define MAX_HTTP_OUTPUT_BUFFER 1024
 
 // Move all these to config.json later
-#define WEB_API_URL     CONFIG_COINMARKET_OWM_URL //"https://sandbox-api.coinmarketcap.com"
-#define WEB_API_PORT    "443"    // not used unless we need custom port number
-#define WEB_API_PATH    "/v1/cryptocurrency/listings/latest" //?q=" CONFIG_WEATHER_LOCATION "&units=metric&APPID="
+#define WEB_API_URL     CONFIG_COINMARKET_OWM_URL //"pro-api.coinmarketcap.com"
+#define WEB_API_PORT    "80"    // not used unless we need custom port number
+#define WEB_API_PATH    "/v1/cryptocurrency/quotes/latest" //?q=" CONFIG_WEATHER_LOCATION "&units=metric&APPID="
 #define WEB_API_KEY     CONFIG_COINMARKET_API_KEY //
 
 CoinMarketCap::CoinMarketCap()
@@ -65,17 +66,18 @@ CoinMarketCap::CoinMarketCap()
     // cfg_filename = "/spiffs/settings.json";
     // cfg = new SettingsConfig(cfg_filename);
     // cfg->load_config();
+}
 
 /* 
- * Get values from CoinMarketCap API 
+ * Get Coins from CoinMarketCap API 
  * API call can fail => no wifi / connectivity issues / request limits
  * If fails, data from cache file is used.
 */
 void CoinMarketCap::request_coin_update()
 {
-    jsonString = "";
+    jsonString = "{}";
 
-    // Get weather from OpenWeatherMap and update the cache file
+    // Get coin track from CoinMarketCap and update the cache file
     if (request_json_over_http() == ESP_OK) {
         ESP_LOGI(TAG,"Updating and writing into cache - crypto.json");
         write_json();    // Save content of jsonString to file if success
@@ -97,61 +99,27 @@ void CoinMarketCap::load_json()
     // 19.8°С temperature from 18.9°С to 19.8 °С, wind 1.54 m/s. clouds 20 %, 1017 hpa
     root = cJSON_Parse(jsonString.c_str());
 
-    // name = Bengaluru / What we searched?
-    LocationName = cJSON_GetObjectItem(root,"name")->valuestring;
-    int root_visibility = cJSON_GetObjectItem(root,"visibility")->valueint;
-    ESP_LOGW(TAG,"root: %s / %d",LocationName.c_str(), root_visibility);
+    datainfo = cJSON_GetObjectItem(root,"data");
+    coininfo = cJSON_GetObjectItem(datainfo,"BTC");
 
-    maininfo = cJSON_GetObjectItem(root,"main");
-    Temperature = cJSON_GetObjectItem(maininfo,"temp")->valuedouble;
-    TemperatureFeelsLike = cJSON_GetObjectItem(maininfo,"feels_like")->valuedouble;
-    TemperatureLow = cJSON_GetObjectItem(maininfo,"temp_min")->valuedouble;
-    TemperatureHigh = cJSON_GetObjectItem(maininfo,"temp_max")->valuedouble;
-    Pressure = cJSON_GetObjectItem(maininfo,"pressure")->valueint;
-    Humidity = cJSON_GetObjectItem(maininfo,"humidity")->valueint;
+    Name = cJSON_GetObjectItem(coininfo,"name")->valuestring;
+    Symbol = cJSON_GetObjectItem(coininfo,"symbol")->valuestring;
+    Quote = "USD";
+
+    quoteinfo = cJSON_GetObjectItem(coininfo,"quote");
+    quotecoininfo = cJSON_GetObjectItem(quoteinfo,"USD");
+
+    Price = cJSON_GetObjectItem(quotecoininfo,"price")->valuedouble;
+    Change1h = cJSON_GetObjectItem(quotecoininfo,"percent_change_1h")->valuedouble;
+    Change24h = cJSON_GetObjectItem(quotecoininfo,"percent_change_24h")->valuedouble;
+    Change7d = cJSON_GetObjectItem(quotecoininfo,"percent_change_7d")->valuedouble;
+
+    Amount = 0.112345;
+    AmountValue = 2205.03;
     
-    ESP_LOGW(TAG,"main: %3.1f°С / %3.1f°С / %3.1f°С / %3.1f°С / %d / %dhpa",
-                                            Temperature, TemperatureFeelsLike,
-                                            TemperatureLow, TemperatureHigh,
-                                            Pressure,Humidity);
-
-/*    
-    SeaLevel = cJSON_GetObjectItem(maininfo,"sea_level")->valueint;
-    GroundLevel = cJSON_GetObjectItem(maininfo,"grnd_level")->valueint;
-*/
-
-
-    // 1st element of the weather array. 
-    // Guess for free api version only 1 (single day) available
-    weather = cJSON_GetArrayItem(cJSON_GetObjectItem(root,"weather"),0);
-    string weather_main = cJSON_GetObjectItem(weather,"main")->valuestring;
-    string weather_description = cJSON_GetObjectItem(weather,"description")->valuestring;
-    WeatherIcon = cJSON_GetObjectItem(weather,"icon")->valuestring;
-    ESP_LOGW(TAG,"weather: %s / %s / %s",weather_main.c_str(), weather_description.c_str(),WeatherIcon.c_str());
-
-    // lon / lat
-    coord = cJSON_GetObjectItem(root,"coord");
-    double coord_lon = cJSON_GetObjectItem(coord,"lon")->valuedouble;
-    double coord_lat = cJSON_GetObjectItem(coord,"lat")->valuedouble;
-    ESP_LOGW(TAG,"coord: %f / %f ",coord_lon, coord_lat);
-
-    // all = 20 ???
-    //clouds = cJSON_GetObjectItem(root,"clouds");
-
-    // speed / degree
-    wind = cJSON_GetObjectItem(root,"wind");
-    double wind_speed = cJSON_GetObjectItem(wind,"speed")->valuedouble;
-    int wind_deg = cJSON_GetObjectItem(wind,"deg")->valueint;
-    ESP_LOGW(TAG,"wind: %3.1f m/s / %d ",wind_speed, wind_deg);
-
-    // type / id / country / sunrise (epoc?) / sunset (epoc?)
-    //sys = cJSON_GetObjectItem(root,"sys");
-
-	// }
-	// catch (exception& exc)
-	// {
-	// 	ESP_LOGE(TAG,"Exception has occurred!");
-	// }
+    ESP_LOGW(TAG,"data: %3.1f$ price / %3.1f changed 1h / %3.1f changed 24h / %3.1f changed 7d",
+                                            Price, Change1h,
+                                            Change24h, Change7d);
 
     // Cleanup
     cJSON_Delete(root);
@@ -187,8 +155,9 @@ void CoinMarketCap::write_json()
     jsonfile.close();    
 }
 
-esp_err_t http_event_handle(esp_http_client_event_t *evt)
+esp_err_t coin_http_event_handle(esp_http_client_event_t *evt)
 {
+    static char *output_buffer;  // Buffer to store response of http request from event handler
     static int output_len;       // Stores number of bytes read
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
@@ -206,21 +175,49 @@ esp_err_t http_event_handle(esp_http_client_event_t *evt)
             break;
         case HTTP_EVENT_ON_DATA:
             ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+            ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, %s", (const char *) evt->data);
             if (!esp_http_client_is_chunked_response(evt->client)) {
                 // If user_data buffer is configured, copy the response into the buffer
+                int copy_len = 0;
                 if (evt->user_data) {
-                    memcpy(evt->user_data + output_len, evt->data, evt->data_len);
+                    copy_len = MIN(evt->data_len, (MAX_HTTP_OUTPUT_BUFFER - output_len));
+                    if (copy_len) {
+                        memcpy(evt->user_data + output_len, evt->data, copy_len);
+                    }
+                } else {
+                    const int buffer_len = esp_http_client_get_content_length(evt->client);
+                    if (output_buffer == NULL) {
+                        output_buffer = (char *) malloc(buffer_len);
+                        output_len = 0;
+                        if (output_buffer == NULL) {
+                            ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
+                            return ESP_FAIL;
+                        }
+                    }
+                    copy_len = MIN(evt->data_len, (buffer_len - output_len));
+                    if (copy_len) {
+                        memcpy(output_buffer + output_len, evt->data, copy_len);
+                    }
                 }
-                output_len += evt->data_len;
+                output_len += copy_len;
             }            
             break;
         case HTTP_EVENT_ON_FINISH:
             ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH, Total len=%d", output_len);
+            if (output_buffer != NULL) {
+                // Response is accumulated in output_buffer. Uncomment the below line to print the accumulated response
+                // ESP_LOG_BUFFER_HEX(TAG, output_buffer, output_len);
+                free(output_buffer);
+                output_buffer = NULL;
+            }
             output_len = 0;
             break;
         case HTTP_EVENT_DISCONNECTED:
             ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED");
+            if (output_buffer != NULL) {
+                free(output_buffer);
+                output_buffer = NULL;
+            }
             output_len = 0;
             break;
         case HTTP_EVENT_REDIRECT:
@@ -235,7 +232,7 @@ esp_err_t http_event_handle(esp_http_client_event_t *evt)
 */
 esp_err_t CoinMarketCap::request_json_over_https()
 {
-    ESP_LOGI(TAG, "HTTPS request to get weather");
+    ESP_LOGI(TAG, "HTTPS request to get cryptos");
     return ESP_OK;
 }
 
@@ -247,23 +244,22 @@ esp_err_t CoinMarketCap::request_json_over_http()
     char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
 
     jsonString = "";
-    string queryString = "";
+    string convertString = "convert=USD&symbol=BTC";
+    string queryString = WEB_API_PATH "?" + convertString;
+    string coinUrl = WEB_API_URL "" + queryString;
 
-    queryString = WEB_API_PATH "latest";
-
-    ESP_LOGI(TAG, "HTTP request to get weather");
-    ESP_LOGE(TAG,"URL: %s%s", WEB_API_URL, queryString.c_str());
+    ESP_LOGI(TAG, "HTTP request to get cryptos");
+    ESP_LOGE(TAG,"URL: %s", coinUrl.c_str());
 
     esp_http_client_config_t config = {
-        .host = WEB_API_URL,
-        .path = queryString.c_str(),
-        .event_handler = http_event_handle,
-        .user_data = local_response_buffer,        // Pass address of local buffer to get response
+        .url = coinUrl.c_str(),
+        .event_handler = coin_http_event_handle,
+        .user_data = local_response_buffer,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
-    esp_err_t err = esp_http_client_set_header(client, "X-CMC_PRO_API_KEY", WEB_API_KEY)
-    esp_err_t err = esp_http_client_perform(client);
+    esp_err_t err = esp_http_client_set_header(client, "X-CMC_PRO_API_KEY", WEB_API_KEY);
+    err = esp_http_client_perform(client);
 
     if (err == ESP_OK) {
     ESP_LOGI(TAG, "Status = %d, content_length = %" PRId64 , // PRIu64  / PRIx64 to print in hexadecimal.
@@ -274,7 +270,7 @@ esp_err_t CoinMarketCap::request_json_over_http()
     }
 
     esp_http_client_cleanup(client);    
-    //ESP_LOGE(TAG,"JSON:\n%s",local_response_buffer);
+    ESP_LOGE("JSON", "%s", (const char *) local_response_buffer);
     jsonString = local_response_buffer;
     return ESP_OK;
 

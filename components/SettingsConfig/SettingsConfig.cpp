@@ -36,8 +36,8 @@ SettingsConfig::SettingsConfig(string filename)
     WeatherProvider = "OpenWeatherMaps";
     WeatherLocation = "Bangalore, India";
     WeatherAPIkey = "";
-    CoinMarketCapAPIProvider = "https://sandbox-api.coinmarketcap.com/v1/";
-    CoinMarketCapAPIkey = "";
+    CoinMarketCapAPIProvider = "https://pro-api.coinmarketcap.com";
+    CoinMarketCapAPIkey = "2c83904b-2e30-48c3-af4b-492f001305ce";
     WeatherUpdateInterval = 5 * 60;    // Every 5mins
     CoinUpdateInterval = 5 * 60;    // Every 5mins
     TemperatureUnits = WEATHER_UNITS_CELSIUS;

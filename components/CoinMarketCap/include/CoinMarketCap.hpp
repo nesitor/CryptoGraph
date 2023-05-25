@@ -24,60 +24,96 @@ SOFTWARE.
 
 /*
 {
-  "coord": {
-    "lon": 77.6033,
-    "lat": 12.9762
+  "status": {
+    "timestamp": "2023-03-08T12:30:10.540Z",
+    "error_code": 0,
+    "error_message": null,
+    "elapsed": 396,
+    "credit_count": 1,
+    "notice": null
   },
-  "weather": [
-    {
-      "id": 801,
-      "main": "Clouds",
-      "description": "few clouds",    // "overcast clouds"
-      "icon": "02n"                   // 04n
+  "data": {
+    "BTC": {
+      "id": 1,
+      "name": "Bitcoin",
+      "symbol": "BTC",
+      "slug": "bitcoin",
+      "num_market_pairs": 10082,
+      "date_added": "2013-04-28T00:00:00.000Z",
+      "tags": [
+        "mineable",
+        "pow",
+        "sha-256",
+        "store-of-value",
+        "state-channel",
+        "coinbase-ventures-portfolio",
+        "three-arrows-capital-portfolio",
+        "polychain-capital-portfolio",
+        "binance-labs-portfolio",
+        "blockchain-capital-portfolio",
+        "boostvc-portfolio",
+        "cms-holdings-portfolio",
+        "dcg-portfolio",
+        "dragonfly-capital-portfolio",
+        "electric-capital-portfolio",
+        "fabric-ventures-portfolio",
+        "framework-ventures-portfolio",
+        "galaxy-digital-portfolio",
+        "huobi-capital-portfolio",
+        "alameda-research-portfolio",
+        "a16z-portfolio",
+        "1confirmation-portfolio",
+        "winklevoss-capital-portfolio",
+        "usv-portfolio",
+        "placeholder-ventures-portfolio",
+        "pantera-capital-portfolio",
+        "multicoin-capital-portfolio",
+        "paradigm-portfolio",
+        "btc-ecosystem"
+      ],
+      "max_supply": 21000000,
+      "circulating_supply": 19311768,
+      "total_supply": 19311768,
+      "is_active": 1,
+      "platform": null,
+      "cmc_rank": 1,
+      "is_fiat": 0,
+      "self_reported_circulating_supply": null,
+      "self_reported_market_cap": null,
+      "tvl_ratio": null,
+      "last_updated": "2023-03-08T12:28:00.000Z",
+      "quote": {
+        "USD": {
+          "price": 22073.65691595661,
+          "volume_24h": 24728043114.32274,
+          "volume_change_24h": 52.4852,
+          "percent_change_1h": -0.12181079,
+          "percent_change_24h": -1.39865092,
+          "percent_change_7d": -7.10944942,
+          "percent_change_30d": -3.42964715,
+          "percent_change_60d": 30.46260299,
+          "percent_change_90d": 31.02144248,
+          "market_cap": 426281341272.54956,
+          "market_cap_dominance": 42.1574,
+          "fully_diluted_market_cap": 463546795235.09,
+          "tvl": null,
+          "last_updated": "2023-03-08T12:28:00.000Z"
+        }
+      }
     }
-  ],
-  "base": "stations",
-  "main": {
-    "temp": 19.8,
-    "feels_like": 19.4,
-    "temp_min": 18.9,
-    "temp_max": 19.8,
-    "pressure": 1017,     // hpa
-    "humidity": 60,       // percentage
-    "sea_level": 1015,    // hpa
-    "grnd_level": 912     // hpa
-  },
-  "visibility": 6000,
-  "wind": {
-    "speed": 1.54,        //  m/s
-    "deg": 360            // 
-  },
-  "clouds": {
-    "all": 20       // percentage
-  },
-  "dt": 1668704139,
-  "sys": {
-    "type": 1,
-    "id": 9205,
-    "country": "IN",
-    "sunrise": 1668646147,
-    "sunset": 1668687606
-  },
-  "timezone": 19800,
-  "id": 1277333,
-  "name": "Bengaluru",
-  "cod": 200
+  }
 }
 */
 
-#ifndef TUX_OWM_H_
-#define TUX_OWM_H_
+#ifndef TUX_CMC_H_
+#define TUX_CMC_H_
 
 #include <iostream>
 #include <sstream>
 #include <fstream>
 #include <filesystem>
 #include <inttypes.h>
+#include <sys/param.h>
 
 #include "esp_log.h"
 #include <fstream>
@@ -89,23 +125,20 @@ using namespace std;
 class CoinMarketCap
 {
     public:
-        string LocationName;
-        float Temperature;     // 19.8
-        float TemperatureHigh;
-        float TemperatureLow;
-        float TemperatureFeelsLike;
-        int Pressure;
-        int Humidity;
-        int SeaLevel;
-        int GroundLevel;
-
-        char TemperatureUnit;   // '' / 'F' / 'C'
-        string WeatherIcon;
+        string Name;       // Bitcoin
+        string Symbol;     // BTC
+        string Quote;      // USD
+        float Price;
+        float Change1h;
+        float Change24h;
+        float Change7d;
+        float Amount;
+        float AmountValue;
 
         /* Constructor */
         CoinMarketCap();
 
-        /* HTTPS request to the Weather API */
+        /* HTTPS request to the Coin API */
         void request_coin_update();
 
         /* Handle json response */
@@ -114,16 +147,14 @@ class CoinMarketCap
         SettingsConfig *cfg;
         string cfg_filename;  /* Settings config filename*/
 
-        string file_name; /* Weather cache filename */
+        string file_name; /* Coin cache filename */
         string jsonString;
 
         cJSON *root;
-        cJSON *maininfo;
-        cJSON *coord;
-        cJSON *weather;
-        cJSON *clouds;
-        cJSON *wind;
-        cJSON *sys;
+        cJSON *datainfo;
+        cJSON *coininfo;
+        cJSON *quoteinfo;
+        cJSON *quotecoininfo;
 
         /* Load data from cache file to the instance */
         void load_json();

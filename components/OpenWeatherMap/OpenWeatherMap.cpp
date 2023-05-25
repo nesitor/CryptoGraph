@@ -290,7 +290,7 @@ esp_err_t OpenWeatherMap::request_json_over_http()
     }
 
     esp_http_client_cleanup(client);    
-    //ESP_LOGE(TAG,"JSON:\n%s",local_response_buffer);
+    // ESP_LOGE(TAG,"JSON:\n%s",local_response_buffer);
     jsonString = local_response_buffer;
     return ESP_OK;
 

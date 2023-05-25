@@ -256,6 +256,8 @@ extern "C" void app_main(void)
     cfg->WeatherAPIkey = CONFIG_WEATHER_API_KEY;
     cfg->WeatherLocation = CONFIG_WEATHER_LOCATION;
     cfg->WeatherProvider = CONFIG_WEATHER_OWM_URL;
+    cfg->CoinMarketCapAPIProvider = CONFIG_COINMARKET_OWM_URL;
+    cfg->CoinMarketCapAPIkey = CONFIG_COINMARKET_API_KEY;
     // Change brightness
     cfg->Brightness=250;
     // Save settings again
@@ -264,6 +266,7 @@ extern "C" void app_main(void)
 
 //******************************************** 
     owm = new OpenWeatherMap();
+    cmc = new CoinMarketCap();
 //********************** CONFIG HELPER TESTING ENDS
 
     lcd.init();         // Initialize LovyanGFX
@@ -324,6 +327,8 @@ extern "C" void app_main(void)
 
     // Weather update timer - Once per min (60*1000) or maybe once in 10 mins (10*60*1000)
     timer_weather = lv_timer_create(timer_weather_callback, WEATHER_UPDATE_INTERVAL,  NULL);
+    // Crypto update timer - Once per min (60*1000) or maybe once in 10 mins (10*60*1000)
+    timer_crypto = lv_timer_create(timer_crypto_callback, COIN_UPDATE_INTERVAL,  NULL);
 
     //lv_timer_set_repeat_count(timer_weather,1);
     //lv_timer_pause(timer_weather);  // enable after wifi is connected
@@ -359,6 +364,18 @@ static void timer_weather_callback(lv_timer_t * timer)
     lv_msg_send(MSG_WEATHER_CHANGED, owm);
 }
 
+static void timer_crypto_callback(lv_timer_t * timer)
+{
+    if (cfg->CoinMarketCapAPIkey.empty()) {   // If API key not defined skip weather update
+        ESP_LOGW(TAG,"CoinMarketCap API Key not set");
+        return;
+    }
+
+    // Update crypto and trigger UI update
+    cmc->request_coin_update();
+    lv_msg_send(MSG_CRYPTO_CHANGED, cmc);
+}
+
 // Callback to notify App UI change
 static void tux_ui_change_cb(void * s, lv_msg_t *m)
 {
@@ -375,6 +392,7 @@ static void tux_ui_change_cb(void * s, lv_msg_t *m)
             // Update date/time and current weather
             // Date/time is updated every second anyway
             lv_msg_send(MSG_WEATHER_CHANGED, owm);
+            lv_msg_send(MSG_CRYPTO_CHANGED, cmc);
             break;
         case MSG_PAGE_REMOTE:
             // Trigger loading buttons data

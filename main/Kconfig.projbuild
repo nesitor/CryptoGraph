@@ -247,4 +247,16 @@ menu "ESP32-TUX Configuration"
                 URL of server where sample weather.json is available.    
     endmenu
 
+    menu "CoinMarketCap Config"
+        config COINMARKET_OWM_URL
+            string "CoinMarketCap URL for Current Coin API"
+            default "https://pro-api.coinmarketcap.com"
+            help
+                URL of CoinMarketCap API.
+        config COINMARKET_API_KEY
+            string "CoinMarketCap API Key for access"
+            help
+                Register on CoinMarketCap.com for FREE limited API KEY
+    endmenu
+
 endmenu

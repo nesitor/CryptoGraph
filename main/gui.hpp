@@ -27,6 +27,7 @@ SOFTWARE.
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include "OpenWeatherMap.hpp"
+#include "CoinMarketCap.hpp"
 #include "apps/weather/weathericons.h"
 #include "events/gui_events.hpp"
 #include <esp_partition.h>
@@ -229,6 +230,7 @@ static void graph_event_handler(lv_event_t *e);
 /* MSG Events */
 void datetime_event_cb(lv_event_t * e);
 void weather_event_cb(lv_event_t * e);
+void crypto_event_cb(lv_event_t * e);
 
 static void status_change_cb(void * s, lv_msg_t *m);
 static void lv_update_battery(uint batval);
@@ -322,10 +324,10 @@ void lv_setup_styles()
 
     // PRICE STYLES
     lv_style_init(&style_win);
-    lv_style_set_text_color(&style_win, lv_color_hex(0x007A06));
+    lv_style_set_text_color(&style_win, lv_color_hex(0x00FF00));
 
     lv_style_init(&style_loose);
-    lv_style_set_text_color(&style_loose, lv_color_hex(0x910000));
+    lv_style_set_text_color(&style_loose, lv_color_hex(0xFF0000));
 
     lv_style_init(&style_change);
     lv_style_set_width(&style_change, LV_SIZE_CONTENT);
@@ -348,12 +350,12 @@ void lv_setup_styles()
     lv_style_set_width(&style_price, LV_SIZE_CONTENT);
     lv_style_set_height(&style_price, LV_SIZE_CONTENT);
     lv_style_set_align(&style_price, LV_ALIGN_RIGHT_MID);
-    lv_style_set_text_color(&style_price, lv_color_hex(0x910000));
+    lv_style_set_text_color(&style_price, lv_color_hex(0x999999));
     lv_style_set_text_opa(&style_price, 255);
 
     lv_style_init(&style_amount);
     lv_style_set_align(&style_amount, LV_ALIGN_LEFT_MID);
-    lv_style_set_text_color(&style_amount, lv_color_hex(0x910000));
+    lv_style_set_text_color(&style_amount, lv_color_hex(0x999999));
     lv_style_set_text_opa(&style_amount, 255);
     lv_style_set_text_align(&style_amount, LV_TEXT_ALIGN_AUTO);
     lv_style_set_pad_left(&style_amount, 0);
@@ -822,7 +824,12 @@ void create_page_crypto(lv_obj_t *parent)
 
     ui_priceLabel = lv_label_create(ui_titleCryptoPanel);
     lv_obj_add_style(ui_priceLabel, &style_price, 0);
+    lv_obj_add_style(ui_priceLabel, &style_loose, 0);
     lv_label_set_text(ui_priceLabel, "$ 25.253");
+
+    // MSG - MSG_CRYPTO_CHANGED - EVENT
+    lv_obj_add_event_cb(ui_cryptoPanel, crypto_event_cb, LV_EVENT_MSG_RECEIVED, NULL);
+    lv_msg_subsribe_obj(MSG_CRYPTO_CHANGED, ui_cryptoPanel, NULL);
 
     ui_assetsCryptoPanel = lv_obj_create(ui_cryptoPanel);
     lv_obj_set_width(ui_assetsCryptoPanel, 440);
@@ -1221,6 +1228,52 @@ void weather_event_cb(lv_event_t * e)
 
         lv_label_set_text(lbl_temp,fmt::format("{:.1f}°{}",e_owm->Temperature,e_owm->TemperatureUnit).c_str());
         lv_label_set_text(lbl_hl,fmt::format("H:{:.1f}° L:{:.1f}°",e_owm->TemperatureHigh,e_owm->TemperatureLow).c_str());
+    }
+}
+
+void crypto_event_cb(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_msg_t * m = lv_event_get_msg(e);
+    
+    // Not necessary but if event target was button or so, then required
+    if (code == LV_EVENT_MSG_RECEIVED)  
+    {
+        CoinMarketCap *e_cmc = NULL;
+        e_cmc = (CoinMarketCap*)lv_msg_get_payload(m);
+
+        float e_change1h = e_cmc->Change1h;
+        float e_change24h = e_cmc->Change24h;
+        float e_change7d = e_cmc->Change7d;
+
+        if (e_change1h > 0) {
+            lv_obj_add_style(ui_priceLabel, &style_win, 0);
+            lv_obj_add_style(ui_changesLabel1, &style_win, 0);
+            lv_obj_add_style(ui_amountLabel, &style_win, 0);
+        } else {
+            lv_obj_add_style(ui_priceLabel, &style_loose, 0);
+            lv_obj_add_style(ui_changesLabel1, &style_loose, 0);
+            lv_obj_add_style(ui_amountLabel, &style_loose, 0);
+        }
+
+        if (e_change24h > 0) {
+            lv_obj_add_style(ui_changesLabel2, &style_win, 0);
+        } else {
+            lv_obj_add_style(ui_changesLabel2, &style_loose, 0);
+        }
+
+        if (e_change7d > 0) {
+            lv_obj_add_style(ui_changesLabel3, &style_win, 0);
+        } else {
+            lv_obj_add_style(ui_changesLabel3, &style_loose, 0);
+        }   
+
+        lv_label_set_text(ui_cryptoLabel,fmt::format("{} ({}) / {}", e_cmc->Name, e_cmc->Symbol, e_cmc->Quote).c_str());
+        lv_label_set_text(ui_priceLabel,fmt::format("$ {:.2f}", e_cmc->Price).c_str());
+        lv_label_set_text(ui_amountLabel,fmt::format("{:.6f} {} | {:.2f} US$", e_cmc->Amount, e_cmc->Symbol, e_cmc->AmountValue).c_str());
+        lv_label_set_text(ui_changesLabel1,fmt::format("1H: {:+.2f}%", e_change1h).c_str());
+        lv_label_set_text(ui_changesLabel2,fmt::format("1D: {:+.2f}%", e_change24h).c_str());
+        lv_label_set_text(ui_changesLabel3,fmt::format("7D: {:+.2f}%", e_change7d).c_str());
     }
 }
 

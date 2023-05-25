@@ -93,6 +93,7 @@ using namespace std ;
 #include "events/tux_events.hpp"
 
 #include "OpenWeatherMap.hpp"
+#include "CoinMarketCap.hpp"
 #include "events/gui_events.hpp"
 
 /* Event source periodic timer related definitions */
@@ -100,9 +101,11 @@ ESP_EVENT_DEFINE_BASE(TUX_EVENTS);
 
 SettingsConfig *cfg;
 OpenWeatherMap *owm;
+CoinMarketCap  *cmc;
 
 static void timer_datetime_callback(lv_timer_t * timer);
 static void timer_weather_callback(lv_timer_t * timer);
+static void timer_crypto_callback(lv_timer_t * timer);
 static void lv_update_battery(uint batval);
 static void tux_ui_change_cb(void * s, lv_msg_t *m);
 
@@ -117,6 +120,7 @@ static int battery_value = 0;
 
 static lv_timer_t * timer_datetime;
 static lv_timer_t * timer_weather;
+static lv_timer_t * timer_crypto;
 
 // Take your pick, here is the complete timezone list :)
 // https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
@@ -132,5 +136,6 @@ char devinfo_data[300] = {0};   // Device info
 
 // Weather update timer - Once per min (60*1000) or maybe once in 10 mins (10*60*1000)
 static constexpr int WEATHER_UPDATE_INTERVAL = 60 * 1000;
+static constexpr int COIN_UPDATE_INTERVAL = 60 * 1000;
 
 #endif // TUX_CONF_H
