@@ -24,6 +24,9 @@ SOFTWARE.
 
 #include "CoinMarketCap.hpp"
 #include "esp_tls.h"
+#if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+#include "esp_crt_bundle.h"
+#endif
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
@@ -48,8 +51,8 @@ static const char* TAG = "CoinMarketCap";
     If device is disconnected from internet or fails, it will show the last weather update
 */
 
-#define MAX_HTTP_RECV_BUFFER 512
-#define MAX_HTTP_OUTPUT_BUFFER 1024
+#define MAX_HTTP_RECV_BUFFER 2048
+#define MAX_HTTP_OUTPUT_BUFFER 2048
 
 // Move all these to config.json later
 #define WEB_API_URL     CONFIG_COINMARKET_OWM_URL //"pro-api.coinmarketcap.com"
@@ -175,32 +178,27 @@ esp_err_t coin_http_event_handle(esp_http_client_event_t *evt)
             break;
         case HTTP_EVENT_ON_DATA:
             ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, %s", (const char *) evt->data);
+            /*
+             *  Check for chunked encoding is added as the URL for chunked encoding used in this example returns binary data.
+             *  However, event handler can also be used in case chunked encoding is used.
+             */
             if (!esp_http_client_is_chunked_response(evt->client)) {
                 // If user_data buffer is configured, copy the response into the buffer
-                int copy_len = 0;
                 if (evt->user_data) {
-                    copy_len = MIN(evt->data_len, (MAX_HTTP_OUTPUT_BUFFER - output_len));
-                    if (copy_len) {
-                        memcpy(evt->user_data + output_len, evt->data, copy_len);
-                    }
+                    memcpy(evt->user_data + output_len, evt->data, evt->data_len);
                 } else {
-                    const int buffer_len = esp_http_client_get_content_length(evt->client);
                     if (output_buffer == NULL) {
-                        output_buffer = (char *) malloc(buffer_len);
+                        output_buffer = (char *) malloc(esp_http_client_get_content_length(evt->client));
                         output_len = 0;
                         if (output_buffer == NULL) {
                             ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
                             return ESP_FAIL;
                         }
                     }
-                    copy_len = MIN(evt->data_len, (buffer_len - output_len));
-                    if (copy_len) {
-                        memcpy(output_buffer + output_len, evt->data, copy_len);
-                    }
+                    memcpy(output_buffer + output_len, evt->data, evt->data_len);
                 }
-                output_len += copy_len;
-            }            
+                output_len += evt->data_len;
+            }       
             break;
         case HTTP_EVENT_ON_FINISH:
             ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
@@ -242,6 +240,7 @@ esp_err_t CoinMarketCap::request_json_over_https()
 esp_err_t CoinMarketCap::request_json_over_http()
 {
     char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
+    int content_length = 0;
 
     jsonString = "";
     string convertString = "convert=USD&symbol=BTC";
@@ -251,26 +250,52 @@ esp_err_t CoinMarketCap::request_json_over_http()
     ESP_LOGI(TAG, "HTTP request to get cryptos");
     ESP_LOGE(TAG,"URL: %s", coinUrl.c_str());
 
+#if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
     esp_http_client_config_t config = {
         .url = coinUrl.c_str(),
-        .event_handler = coin_http_event_handle,
-        .user_data = local_response_buffer,
+        .crt_bundle_attach = esp_crt_bundle_attach,
     };
+#else
+    esp_http_client_config_t config = {
+        .url = coinUrl.c_str(),
+    };
+#endif
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     esp_err_t err = esp_http_client_set_header(client, "X-CMC_PRO_API_KEY", WEB_API_KEY);
-    err = esp_http_client_perform(client);
+    esp_http_client_set_method(client, HTTP_METHOD_GET);
+    err = esp_http_client_open(client, 0);
+    // err = esp_http_client_perform(client);
 
-    if (err == ESP_OK) {
-    ESP_LOGI(TAG, "Status = %d, content_length = %" PRId64 , // PRIu64  / PRIx64 to print in hexadecimal.
-            esp_http_client_get_status_code(client),
-            esp_http_client_get_content_length(client));
+    /*if (err == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %lld",
+                esp_http_client_get_status_code(client),
+                esp_http_client_get_content_length(client));
     } else {
-        return ESP_FAIL;
+        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+    }*/
+
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open HTTP connection: %s", esp_err_to_name(err));
+    } else {
+        content_length = esp_http_client_fetch_headers(client);
+        if (content_length < 0) {
+            ESP_LOGE(TAG, "HTTP client fetch headers failed");
+        } else {
+            int data_read = esp_http_client_read_response(client, local_response_buffer, MAX_HTTP_OUTPUT_BUFFER);
+            if (data_read >= 0) {
+                ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %lld",
+                esp_http_client_get_status_code(client),
+                esp_http_client_get_content_length(client));
+                ESP_LOG_BUFFER_HEX(TAG, local_response_buffer, data_read);
+            } else {
+                ESP_LOGE(TAG, "Failed to read response");
+            }
+        }
     }
 
-    esp_http_client_cleanup(client);    
-    ESP_LOGE("JSON", "%s", (const char *) local_response_buffer);
+    ESP_LOGE(TAG,"JSON:\n%s",local_response_buffer);
+    esp_http_client_cleanup(client);
     jsonString = local_response_buffer;
     return ESP_OK;
 
