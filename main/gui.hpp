@@ -902,6 +902,9 @@ void create_page_crypto(lv_obj_t *parent)
     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_Y, 0, 0, 0, 0, true, 50);
     lv_chart_set_axis_tick(chart, LV_CHART_AXIS_PRIMARY_X, 0, 0, 5, 2, true, 50);
 
+    lv_chart_set_update_mode(chart, LV_CHART_UPDATE_MODE_SHIFT);
+    lv_chart_set_point_count(chart, 16);
+
     lv_obj_add_event_cb(chart, graph_event_handler, LV_EVENT_ALL, NULL);
     lv_obj_refresh_ext_draw_size(chart);
 
@@ -909,8 +912,8 @@ void create_page_crypto(lv_obj_t *parent)
 
     ser = lv_chart_add_series(chart, lv_color_hex(0xFF8C00), LV_CHART_AXIS_PRIMARY_Y);
     uint32_t i;
-    for(i = 0; i < 10; i++) {
-        lv_chart_set_next_value(chart, ser, lv_rand(10,90));
+    for(i = 0; i < 15; i++) {
+        lv_chart_set_next_value(chart, ser, lv_rand(20000,70000));
     }
 
     lv_obj_set_style_radius(chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -1274,6 +1277,11 @@ void crypto_event_cb(lv_event_t * e)
         lv_label_set_text(ui_changesLabel1,fmt::format("1H: {:+.2f}%", e_change1h).c_str());
         lv_label_set_text(ui_changesLabel2,fmt::format("1D: {:+.2f}%", e_change24h).c_str());
         lv_label_set_text(ui_changesLabel3,fmt::format("7D: {:+.2f}%", e_change7d).c_str());
+
+        for(int value : e_cmc->ChartValues)
+        {
+            lv_chart_set_next_value(chart, ser, value);
+        }
     }
 }
 

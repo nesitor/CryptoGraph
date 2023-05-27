@@ -257,6 +257,10 @@ menu "ESP32-TUX Configuration"
             string "CoinMarketCap API Key for access"
             help
                 Register on CoinMarketCap.com for FREE limited API KEY
+        config COINMARKET_XPUB_ADDRESS
+            string "Bitcoin XPUB format address"
+            help
+                Put the XPUB address with SEGWIT deviation path
     endmenu
 
 endmenu

@@ -51,8 +51,8 @@ static const char* TAG = "CoinMarketCap";
     If device is disconnected from internet or fails, it will show the last weather update
 */
 
-#define MAX_HTTP_RECV_BUFFER 2048
-#define MAX_HTTP_OUTPUT_BUFFER 2048
+#define MAX_HTTP_RECV_BUFFER 1024000
+#define MAX_HTTP_OUTPUT_BUFFER 1024000
 
 // Move all these to config.json later
 #define WEB_API_URL     CONFIG_COINMARKET_OWM_URL //"pro-api.coinmarketcap.com"
@@ -63,7 +63,9 @@ static const char* TAG = "CoinMarketCap";
 CoinMarketCap::CoinMarketCap()
 {
     // Coin cache filename
-    file_name = "/spiffs/crypto/crypto.json";
+    cmc_file_name = "/spiffs/crypto/cmc_crypto.json";
+    cg_file_name = "/spiffs/crypto/cg_crypto.json";
+    btc_file_name = "/spiffs/crypto/btc_crypto.json";
 
     // Settings filename / add these after UI has these config options
     // cfg_filename = "/spiffs/settings.json";
@@ -80,26 +82,56 @@ void CoinMarketCap::request_coin_update()
 {
     jsonString = "{}";
 
-    // Get coin track from CoinMarketCap and update the cache file
-    if (request_json_over_http() == ESP_OK) {
-        ESP_LOGI(TAG,"Updating and writing into cache - crypto.json");
-        write_json();    // Save content of jsonString to file if success
+    // Get coin balance from Bitcoin and update the cache file
+    if (request_json_cg() == ESP_OK) {
+        ESP_LOGI(TAG,"Updating and writing BTC info into cache - btc_crypto.json");
+        write_json(btc_file_name);    // Save content of jsonString to file if success
     }
-    ESP_LOGI(TAG,"Reading - crypto.json");
-    read_json();
+    ESP_LOGI(TAG,"Reading - btc_crypto.json");
+    read_json(btc_file_name);
+    ESP_LOGI(TAG,"Loading - btc_crypto.json");
+    load_cg_json();
 
-    ESP_LOGI(TAG,"Loading - crypto.json");
-    load_json();
+    // Get coin track from CoinMarketCap and update the cache file
+    if (request_json_cmc() == ESP_OK) {
+        ESP_LOGI(TAG,"Updating and writing CMC info into cache - cmc_crypto.json");
+        write_json(cmc_file_name);    // Save content of jsonString to file if success
+    }
+    ESP_LOGI(TAG,"Reading - cmc_crypto.json");
+    read_json(cmc_file_name);
+    ESP_LOGI(TAG,"Loading - cmc_crypto.json");
+    load_cmc_json();
+
+    // Get coin charts from CoinGecko and update the cache file
+    if (request_json_cg() == ESP_OK) {
+        ESP_LOGI(TAG,"Updating and writing CG info into cache - cg_crypto.json");
+        write_json(cg_file_name);    // Save content of jsonString to file if success
+    }
+    ESP_LOGI(TAG,"Reading - cg_crypto.json");
+    read_json(cg_file_name);
+    ESP_LOGI(TAG,"Loading - cg_crypto.json");
+    load_cg_json();
 }
 
-void CoinMarketCap::load_json()
+void CoinMarketCap::load_btc_json()
 {
-    ESP_LOGW(TAG,"load_json() \n%s",jsonString.c_str());
+    ESP_LOGW(TAG,"load_btc_json() \n%s",jsonString.c_str());
 
-    // try
-	// {
+    root = cJSON_Parse(jsonString.c_str());
 
-    // 19.8°С temperature from 18.9°С to 19.8 °С, wind 1.54 m/s. clouds 20 %, 1017 hpa
+    balanceinfo = cJSON_GetObjectItem (root, "balance");
+    int amount = cJSON_GetObjectItem(balanceinfo,"confirmed")->valueint;
+    Amount = (float) amount / 100000000;
+    
+    ESP_LOGW(TAG,"BTC Amount: %f", Amount);
+    // Cleanup
+    cJSON_Delete(root);
+}
+
+void CoinMarketCap::load_cmc_json()
+{
+    ESP_LOGW(TAG,"load_cmc_json() \n%s",jsonString.c_str());
+
     root = cJSON_Parse(jsonString.c_str());
 
     datainfo = cJSON_GetObjectItem(root,"data");
@@ -117,8 +149,7 @@ void CoinMarketCap::load_json()
     Change24h = cJSON_GetObjectItem(quotecoininfo,"percent_change_24h")->valuedouble;
     Change7d = cJSON_GetObjectItem(quotecoininfo,"percent_change_7d")->valuedouble;
 
-    Amount = 0.112345;
-    AmountValue = 2205.03;
+    AmountValue = Amount * Price;
     
     ESP_LOGW(TAG,"data: %3.1f$ price / %3.1f changed 1h / %3.1f changed 24h / %3.1f changed 7d",
                                             Price, Change1h,
@@ -128,13 +159,36 @@ void CoinMarketCap::load_json()
     cJSON_Delete(root);
 }
 
-void CoinMarketCap::read_json()
+void CoinMarketCap::load_cg_json()
+{
+    ESP_LOGW(TAG,"load_cg_json() \n%s",jsonString.c_str());
+    cJSON *pair_element = NULL;
+    cJSON *price_element = NULL;
+
+    root = cJSON_Parse(jsonString.c_str());
+
+    pricesinfo = cJSON_GetObjectItem(root, "prices");
+
+    /* iterate over indexs */
+	int num = 0;
+	cJSON_ArrayForEach(pair_element, pricesinfo) {
+        price_element = cJSON_GetArrayItem(pair_element, 1);
+		ChartValues[num] = price_element->valuedouble;
+        num++;
+	}
+    
+    ESP_LOGW(TAG,"BTC prices: %s", cJSON_Print(pricesinfo));
+    // Cleanup
+    cJSON_Delete(root);
+}
+
+void CoinMarketCap::read_json(string crypto_name)
 {
     // read json file to string    
-    ifstream jsonfile(file_name);
+    ifstream jsonfile(crypto_name);
     if (!jsonfile.is_open())
     {
-        ESP_LOGE(TAG,"File open for read failed %s",file_name.c_str());
+        ESP_LOGE(TAG,"File open for read failed %s",crypto_name.c_str());
         //save_config();  // create file with default values
     }
 
@@ -144,13 +198,13 @@ void CoinMarketCap::read_json()
     jsonfile.close();    
 }
 
-void CoinMarketCap::write_json()
+void CoinMarketCap::write_json(string crypto_name)
 {
     // cache json in flash to show if not online?
-    ofstream jsonfile(file_name);
+    ofstream jsonfile(crypto_name);
     if (!jsonfile.is_open())
     {
-        ESP_LOGE(TAG,"File open for write failed %s",file_name.c_str());
+        ESP_LOGE(TAG,"File open for write failed %s",crypto_name.c_str());
         return ;//ESP_FAIL;
     }
     jsonfile << jsonString;
@@ -158,106 +212,60 @@ void CoinMarketCap::write_json()
     jsonfile.close();    
 }
 
-esp_err_t coin_http_event_handle(esp_http_client_event_t *evt)
+/*
+    Get Haskoin json using http - api.haskoin.com
+*/
+esp_err_t CoinMarketCap::request_json_btc()
 {
-    static char *output_buffer;  // Buffer to store response of http request from event handler
-    static int output_len;       // Stores number of bytes read
-    switch(evt->event_id) {
-        case HTTP_EVENT_ERROR:
-            ESP_LOGI(TAG, "HTTP_EVENT_ERROR");
-            break;
-        case HTTP_EVENT_ON_CONNECTED:
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
-            break;
-        case HTTP_EVENT_HEADER_SENT:
-            ESP_LOGI(TAG, "HTTP_EVENT_HEADER_SENT");
-            break;
-        case HTTP_EVENT_ON_HEADER:
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_HEADER");
-            printf("%.*s", evt->data_len, (char*)evt->data);
-            break;
-        case HTTP_EVENT_ON_DATA:
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-            /*
-             *  Check for chunked encoding is added as the URL for chunked encoding used in this example returns binary data.
-             *  However, event handler can also be used in case chunked encoding is used.
-             */
-            if (!esp_http_client_is_chunked_response(evt->client)) {
-                // If user_data buffer is configured, copy the response into the buffer
-                if (evt->user_data) {
-                    memcpy(evt->user_data + output_len, evt->data, evt->data_len);
-                } else {
-                    if (output_buffer == NULL) {
-                        output_buffer = (char *) malloc(esp_http_client_get_content_length(evt->client));
-                        output_len = 0;
-                        if (output_buffer == NULL) {
-                            ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
-                            return ESP_FAIL;
-                        }
-                    }
-                    memcpy(output_buffer + output_len, evt->data, evt->data_len);
-                }
-                output_len += evt->data_len;
-            }       
-            break;
-        case HTTP_EVENT_ON_FINISH:
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
-            if (output_buffer != NULL) {
-                // Response is accumulated in output_buffer. Uncomment the below line to print the accumulated response
-                // ESP_LOG_BUFFER_HEX(TAG, output_buffer, output_len);
-                free(output_buffer);
-                output_buffer = NULL;
-            }
-            output_len = 0;
-            break;
-        case HTTP_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED");
-            if (output_buffer != NULL) {
-                free(output_buffer);
-                output_buffer = NULL;
-            }
-            output_len = 0;
-            break;
-        case HTTP_EVENT_REDIRECT:
-            break;
-    }
-    return ESP_OK;
+    string apiURL = "https://api.haskoin.com/btc/xpub/";
+    string apiPath = "?derive=segwit";
+    string coinUrl = apiURL + CONFIG_COINMARKET_XPUB_ADDRESS + apiPath;
+
+    return CoinMarketCap::request_https_json(true, coinUrl);
 }
 
 /*
-    Get CoinMarketCap certificate - sandbox-api.coinmarketcap.com
-    openssl s_client -showcerts -connect = sandbox-api.coinmarketcap.com:443 </dev/null
+    Get Coingecko json using http - api.coingecko.com
 */
-esp_err_t CoinMarketCap::request_json_over_https()
+esp_err_t CoinMarketCap::request_json_cg()
 {
-    ESP_LOGI(TAG, "HTTPS request to get cryptos");
-    return ESP_OK;
+    string coinUrl = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=15&interval=daily";
+
+    return CoinMarketCap::request_https_json(true, coinUrl);
 }
 
 /*
     Get CoinMarketCap json using http - sandbox-api.coinmarketcap.com
 */
-esp_err_t CoinMarketCap::request_json_over_http()
+esp_err_t CoinMarketCap::request_json_cmc()
+{
+    string convertString = "convert=USD&symbol=BTC";
+    string queryString = WEB_API_PATH "?" + convertString;
+    string coinUrl = WEB_API_URL "" + queryString;
+
+    return CoinMarketCap::request_https_json(true, coinUrl);
+}
+
+/*
+    Get CoinMarketCap json using http - sandbox-api.coinmarketcap.com
+*/
+esp_err_t CoinMarketCap::request_https_json(bool ssl, string url)
 {
     char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
     int content_length = 0;
 
     jsonString = "";
-    string convertString = "convert=USD&symbol=BTC";
-    string queryString = WEB_API_PATH "?" + convertString;
-    string coinUrl = WEB_API_URL "" + queryString;
 
-    ESP_LOGI(TAG, "HTTP request to get cryptos");
-    ESP_LOGE(TAG,"URL: %s", coinUrl.c_str());
+    ESP_LOGE(TAG,"HTTPS request to URL: %s", url.c_str());
 
-#if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+#if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE && ssl
     esp_http_client_config_t config = {
-        .url = coinUrl.c_str(),
+        .url = url.c_str(),
         .crt_bundle_attach = esp_crt_bundle_attach,
     };
 #else
     esp_http_client_config_t config = {
-        .url = coinUrl.c_str(),
+        .url = url.c_str(),
     };
 #endif
 
@@ -265,15 +273,6 @@ esp_err_t CoinMarketCap::request_json_over_http()
     esp_err_t err = esp_http_client_set_header(client, "X-CMC_PRO_API_KEY", WEB_API_KEY);
     esp_http_client_set_method(client, HTTP_METHOD_GET);
     err = esp_http_client_open(client, 0);
-    // err = esp_http_client_perform(client);
-
-    /*if (err == ESP_OK) {
-        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %lld",
-                esp_http_client_get_status_code(client),
-                esp_http_client_get_content_length(client));
-    } else {
-        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
-    }*/
 
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to open HTTP connection: %s", esp_err_to_name(err));

@@ -135,6 +135,7 @@ class CoinMarketCap
         float Change7d;
         float Amount;
         float AmountValue;
+        double ChartValues[16];
 
         /* Constructor */
         CoinMarketCap();
@@ -148,26 +149,35 @@ class CoinMarketCap
         SettingsConfig *cfg;
         string cfg_filename;  /* Settings config filename*/
 
-        string file_name; /* Coin cache filename */
+        string cmc_file_name; /* Coin cache filename */
+        string cg_file_name; /* Coin cache filename */
+        string btc_file_name; /* Coin cache filename */
         string jsonString;
 
         cJSON *root;
         cJSON *datainfo;
+        cJSON *balanceinfo;
+        cJSON *pricesinfo;
         cJSON *coininfo;
         cJSON *quoteinfo;
         cJSON *quotecoininfo;
 
         /* Load data from cache file to the instance */
-        void load_json();
+        void load_cmc_json();
+        void load_cg_json();
+        void load_btc_json();
 
         /* Read cache json from flash/sdcard */
-        void read_json();
+        void read_json(string crypto_name);
 
         /* Write cache json on flash/sdcard */
-        void write_json();
+        void write_json(string crypto_name);
 
-        esp_err_t request_json_over_http();        
-        esp_err_t request_json_over_https();
+        esp_err_t request_json_cg();        
+        esp_err_t request_json_cmc();
+        esp_err_t request_json_btc();
+
+        esp_err_t request_https_json(bool ssl, string url);
         
     protected:
 

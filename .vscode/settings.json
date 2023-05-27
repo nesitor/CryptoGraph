@@ -6,6 +6,7 @@
         "target/esp32s3.cfg"
     ],
     "files.associations": {
-        "string": "cpp"
+        "string": "cpp",
+        "iosfwd": "cpp"
     }
 }
