@@ -373,7 +373,7 @@ void lv_setup_styles()
     // lv_style_set_shadow_width(&style_glow, 10);
     // lv_style_set_shadow_color(&style_glow, lv_palette_main(LV_PALETTE_RED));
     // lv_style_set_shadow_ofs_x(&style_glow, 5);
-    // lv_style_set_shadow_ofs_y(&style_glow, 5);    
+    // lv_style_set_shadow_ofs_y(&style_glow, 5);
 }
 
 static void create_header(lv_obj_t *parent)
@@ -456,20 +456,20 @@ static void create_footer(lv_obj_t *parent)
     lv_obj_set_size(footerButtons,LV_PCT(100),LV_PCT(100));
     lv_obj_set_style_border_width(footerButtons,0,LV_PART_MAIN | LV_PART_ITEMS);
     lv_btnmatrix_set_btn_ctrl_all(footerButtons, LV_BTNMATRIX_CTRL_CHECKABLE);
-    
+
     //lv_obj_set_style_align(footerButtons,LV_ALIGN_TOP_MID,0);
     lv_btnmatrix_set_one_checked(footerButtons, true);   // only 1 button can be checked
     lv_btnmatrix_set_btn_ctrl(footerButtons,0,LV_BTNMATRIX_CTRL_CHECKED);
 
     // Very important but weird behavior
-    lv_obj_set_height(footerButtons,FOOTER_HEIGHT+20);    
+    lv_obj_set_height(footerButtons,FOOTER_HEIGHT+20);
     lv_obj_set_style_radius(footerButtons,0,LV_PART_ITEMS);
     lv_obj_set_style_bg_opa(footerButtons,LV_OPA_TRANSP,LV_PART_ITEMS);
     lv_obj_add_style(footerButtons, &style_glow,LV_PART_ITEMS | LV_BTNMATRIX_CTRL_CHECKED); // selected
 
     lv_obj_align(footerButtons, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_add_event_cb(footerButtons, footer_button_event_handler, LV_EVENT_ALL, NULL); 
-    
+    lv_obj_add_event_cb(footerButtons, footer_button_event_handler, LV_EVENT_ALL, NULL);
+
 }
 
 static void tux_panel_clock_weather(lv_obj_t *parent)
@@ -579,7 +579,7 @@ static void tux_panel_config(lv_obj_t *parent)
     // Screen Brightness
     /*Create a label below the slider*/
     slider_label = lv_label_create(cont_2);
-    lv_label_set_text_fmt(slider_label, "Brightness : %d", lcd.getBrightness());   
+    lv_label_set_text_fmt(slider_label, "Brightness : %d", lcd.getBrightness());
 
     lv_obj_t * slider = lv_slider_create(cont_2);
     lv_obj_center(slider);
@@ -595,7 +595,7 @@ static void tux_panel_config(lv_obj_t *parent)
     //lv_obj_set_size(label, LV_PCT(90), 20);
     lv_obj_align_to(label,slider,LV_ALIGN_OUT_TOP_MID,0,15);
     //lv_obj_center(slider);
-    
+
     lv_obj_t *sw = lv_switch_create(cont_2);
     lv_obj_add_event_cb(sw, theme_switch_event_handler, LV_EVENT_ALL, label);
     lv_obj_align_to(label, sw, LV_ALIGN_OUT_TOP_MID, 0, 20);
@@ -636,7 +636,7 @@ static void tux_panel_wifi(lv_obj_t *parent)
     lv_obj_align(btn_unprov, LV_ALIGN_CENTER, 0, 0);
     lv_obj_t *lbl2 = lv_label_create(btn_unprov);
     lv_label_set_text(lbl2, "Reset Wi-Fi Settings");
-    lv_obj_center(lbl2);    
+    lv_obj_center(lbl2);
 
     /* ESP QR CODE inserted here */
     qr_status_container = lv_obj_create(cont_1);
@@ -717,7 +717,7 @@ static void tux_panel_devinfo(lv_obj_t *parent)
 
     lbl_device_info = lv_label_create(cont_devinfo);
     // Monoaspace font for alignment
-    lv_obj_set_style_text_font(lbl_device_info,&font_robotomono_13,0); 
+    lv_obj_set_style_text_font(lbl_device_info,&font_robotomono_13,0);
 }
 
 static void graph_event_handler(lv_event_t * e)
@@ -772,7 +772,7 @@ static void create_page_home(lv_obj_t *parent)
 {
     /* HOME PAGE PANELS */
     tux_panel_clock_weather(parent);
-    //tux_panel_devinfo(parent);  
+    //tux_panel_devinfo(parent);
 }
 
 ///////////////////// SCREENS ////////////////////
@@ -886,7 +886,7 @@ void create_page_crypto(lv_obj_t *parent)
     lv_label_set_text(ui_changesLabel2, " 1D: + 1.05%");
 
     ui_divisorLabel2 = lv_label_create(ui_changesCryptoPanel1);
-    lv_obj_add_style(ui_divisorLabel1, &style_change_divisor, 0);
+    lv_obj_add_style(ui_divisorLabel2, &style_change_divisor, 0);
     lv_label_set_text(ui_divisorLabel2, " | ");
 
     ui_changesLabel3 = lv_label_create(ui_changesCryptoPanel1);
@@ -912,8 +912,8 @@ void create_page_crypto(lv_obj_t *parent)
 
     ser = lv_chart_add_series(chart, lv_color_hex(0xFF8C00), LV_CHART_AXIS_PRIMARY_Y);
     uint32_t i;
-    for(i = 0; i < 15; i++) {
-        lv_chart_set_next_value(chart, ser, lv_rand(20000,70000));
+    for(i = 0; i <= 15; i++) {
+        lv_chart_set_next_value(chart, ser, lv_rand(20,80));
     }
 
     lv_obj_set_style_radius(chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -941,7 +941,7 @@ static void create_page_updates(lv_obj_t *parent)
 {
     /* OTA UPDATES PAGE PANELS */
     tux_panel_ota(parent);
-    tux_panel_devinfo(parent);    
+    tux_panel_devinfo(parent);
 }
 
 static void create_splash_screen()
@@ -971,7 +971,7 @@ static void show_ui()
     create_header(screen_container);
     //create_footer(screen_container);
 
-    // CONTENT CONTAINER 
+    // CONTENT CONTAINER
     content_container = lv_obj_create(screen_container);
     lv_obj_set_size(content_container, screen_w, screen_h - HEADER_HEIGHT);
     lv_obj_align(content_container, LV_ALIGN_TOP_MID, 0, HEADER_HEIGHT);
@@ -991,13 +991,13 @@ static void show_ui()
     lv_scr_load_anim(screen_container, LV_SCR_LOAD_ANIM_FADE_IN, 1000,100, true);
 
     // Status subscribers
-    lv_msg_subsribe(MSG_WIFI_PROV_MODE, status_change_cb, NULL);    
-    lv_msg_subsribe(MSG_WIFI_CONNECTED, status_change_cb, NULL);    
-    lv_msg_subsribe(MSG_WIFI_DISCONNECTED, status_change_cb, NULL);    
-    lv_msg_subsribe(MSG_OTA_STATUS, status_change_cb, NULL);    
-    lv_msg_subsribe(MSG_SDCARD_STATUS, status_change_cb, NULL);  
-    lv_msg_subsribe(MSG_BATTERY_STATUS, status_change_cb, NULL);  
-    lv_msg_subsribe(MSG_DEVICE_INFO, status_change_cb, NULL);      
+    lv_msg_subsribe(MSG_WIFI_PROV_MODE, status_change_cb, NULL);
+    lv_msg_subsribe(MSG_WIFI_CONNECTED, status_change_cb, NULL);
+    lv_msg_subsribe(MSG_WIFI_DISCONNECTED, status_change_cb, NULL);
+    lv_msg_subsribe(MSG_OTA_STATUS, status_change_cb, NULL);
+    lv_msg_subsribe(MSG_SDCARD_STATUS, status_change_cb, NULL);
+    lv_msg_subsribe(MSG_BATTERY_STATUS, status_change_cb, NULL);
+    lv_msg_subsribe(MSG_DEVICE_INFO, status_change_cb, NULL);
 
     // Send default page load notification => HOME
     lv_msg_send(MSG_PAGE_HOME,NULL);
@@ -1055,7 +1055,7 @@ static void theme_switch_event_handler(lv_event_t *e)
         {
             switch_theme(true);
             lv_label_set_text(udata, "Theme : Dark");
-            
+
             // Pass the new theme info
             // ESP_ERROR_CHECK(esp_event_post(TUX_EVENTS, TUX_EVENT_THEME_CHANGED, NULL,NULL, portMAX_DELAY));
         }
@@ -1115,14 +1115,14 @@ void switch_theme(bool dark)
                                               0, /*Light or dark mode*/
                                               &lv_font_montserrat_14);
         //bg_theme_color = lv_palette_lighten(LV_PALETTE_GREY, 5);    // #BFBFBD
-        // bg_theme_color = lv_color_make(0,0,255); 
+        // bg_theme_color = lv_color_make(0,0,255);
         bg_theme_color = lv_color_hex(0xBFBFBD); //383837
 
 
         lv_disp_set_theme(disp, theme_current);
         // lv_theme_set_apply_cb(theme_current, new_theme_apply_cb);
         lv_style_set_bg_color(&style_ui_island, bg_theme_color);
-        ESP_LOGI(TAG,"Light theme set");        
+        ESP_LOGI(TAG,"Light theme set");
 
     }
 }
@@ -1150,7 +1150,7 @@ static void espwifi_event_handler(lv_event_t* e)
         ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
         if (provisioned) {
             wifi_prov_mgr_reset_provisioning();     // reset wifi
-            
+
             // Reset device to start provisioning
             lv_label_set_text(lbl_wifi_status, "Wi-Fi Disconnected!");
             lv_obj_set_style_text_color(lbl_wifi_status, lv_palette_main(LV_PALETTE_YELLOW), 0);
@@ -1190,9 +1190,9 @@ void datetime_event_cb(lv_event_t * e)
     lv_event_code_t code = lv_event_get_code(e);
     //lv_event_get_target(e) => cont_datetime
     lv_msg_t * m = lv_event_get_msg(e);
-    
+
     // Not necessary but if event target was button or so, then required
-    if (code == LV_EVENT_MSG_RECEIVED)  
+    if (code == LV_EVENT_MSG_RECEIVED)
     {
         struct tm *dtinfo = (tm*)lv_msg_get_payload(m);
         // Date & Time formatted
@@ -1204,13 +1204,13 @@ void datetime_event_cb(lv_event_t * e)
         strftime(strftime_buf, sizeof(strftime_buf), "%a, %e %b %Y", dtinfo);
         lv_label_set_text_fmt(lbl_date,"%s",strftime_buf);
 
-        // Time in 12hrs 
+        // Time in 12hrs
         strftime(strftime_buf, sizeof(strftime_buf), "%I:%M", dtinfo);
-        lv_label_set_text_fmt(lbl_time, "%s", strftime_buf);        
+        lv_label_set_text_fmt(lbl_time, "%s", strftime_buf);
 
         // 12hr clock AM/PM
         strftime(strftime_buf, sizeof(strftime_buf), "%p", dtinfo);
-        lv_label_set_text_fmt(lbl_ampm, "%s", strftime_buf);        
+        lv_label_set_text_fmt(lbl_ampm, "%s", strftime_buf);
     }
 }
 
@@ -1218,16 +1218,16 @@ void weather_event_cb(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     lv_msg_t * m = lv_event_get_msg(e);
-    
+
     // Not necessary but if event target was button or so, then required
-    if (code == LV_EVENT_MSG_RECEIVED)  
+    if (code == LV_EVENT_MSG_RECEIVED)
     {
         OpenWeatherMap *e_owm = NULL;
         e_owm = (OpenWeatherMap*)lv_msg_get_payload(m);
         //ESP_LOGW(TAG,"weather_event_cb %s",e_owm->LocationName.c_str());
 
-        // set this according to e_owm->WeatherIcon 
-        set_weather_icon(e_owm->WeatherIcon);      
+        // set this according to e_owm->WeatherIcon
+        set_weather_icon(e_owm->WeatherIcon);
 
         lv_label_set_text(lbl_temp,fmt::format("{:.1f}°{}",e_owm->Temperature,e_owm->TemperatureUnit).c_str());
         lv_label_set_text(lbl_hl,fmt::format("H:{:.1f}° L:{:.1f}°",e_owm->TemperatureHigh,e_owm->TemperatureLow).c_str());
@@ -1238,9 +1238,9 @@ void crypto_event_cb(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
     lv_msg_t * m = lv_event_get_msg(e);
-    
+
     // Not necessary but if event target was button or so, then required
-    if (code == LV_EVENT_MSG_RECEIVED)  
+    if (code == LV_EVENT_MSG_RECEIVED)
     {
         CoinMarketCap *e_cmc = NULL;
         e_cmc = (CoinMarketCap*)lv_msg_get_payload(m);
@@ -1269,7 +1269,7 @@ void crypto_event_cb(lv_event_t * e)
             lv_obj_add_style(ui_changesLabel3, &style_win, 0);
         } else {
             lv_obj_add_style(ui_changesLabel3, &style_loose, 0);
-        }   
+        }
 
         lv_label_set_text(ui_cryptoLabel,fmt::format("{} ({}) / {}", e_cmc->Name, e_cmc->Symbol, e_cmc->Quote).c_str());
         lv_label_set_text(ui_priceLabel,fmt::format("$ {:.2f}", e_cmc->Price).c_str());
@@ -1278,10 +1278,24 @@ void crypto_event_cb(lv_event_t * e)
         lv_label_set_text(ui_changesLabel2,fmt::format("1D: {:+.2f}%", e_change24h).c_str());
         lv_label_set_text(ui_changesLabel3,fmt::format("7D: {:+.2f}%", e_change7d).c_str());
 
+        int minim = 0;
+        int maxim = 0;
         for(int value : e_cmc->ChartValues)
         {
-            lv_chart_set_next_value(chart, ser, value);
+            int fixed_value = value;
+            lv_chart_set_next_value(chart, ser, fixed_value);
+            if (fixed_value > maxim) {
+                maxim = fixed_value;
+            }
+            if (fixed_value < minim || minim == 0) {
+                minim = fixed_value;
+            }
         }
+        int max_scale = maxim + (int) ((float) maxim * (float) 0.01);
+        int min_scale = minim - (int) ((float) minim * (float) 0.01);
+        ESP_LOGI(TAG,"Updating chart scale: %d min & %d max", min_scale, max_scale);
+        lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, min_scale, max_scale);
+        lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, min_scale, max_scale);
     }
 }
 
@@ -1305,7 +1319,7 @@ static void footer_button_event_handler(lv_event_t * e)
             create_page_home(content_container);
             anim_move_left_x(content_container,screen_w,0,200);
             lv_msg_send(MSG_PAGE_HOME,NULL);
-        } 
+        }
         // REMOTE
         else if (page_id == MSG_PAGE_REMOTE) {
             lv_obj_clean(content_container);
@@ -1530,7 +1544,7 @@ void tux_anim_callback_set_opacity(lv_anim_t * a, int32_t v)
 
 static void set_weather_icon(string weatherIcon)
 {
-    /* 
+    /*
         https://openweathermap.org/weather-conditions#Weather-Condition-Codes-2
         d = day / n = night
         01 - clear sky
@@ -1549,7 +1563,7 @@ static void set_weather_icon(string weatherIcon)
         // set daytime color
         // color = whitesmoke = lv_color_make(245, 245, 245)
         // Ideally it should change for each weather - light blue for rain etc...
-        lv_obj_set_style_text_color(lbl_weathericon,lv_color_make(241, 235, 156),0); 
+        lv_obj_set_style_text_color(lbl_weathericon,lv_color_make(241, 235, 156),0);
     } else {
         // set night time color
         lv_obj_set_style_text_color(lbl_weathericon,lv_palette_main(LV_PALETTE_BLUE_GREY),0);
@@ -1559,43 +1573,43 @@ static void set_weather_icon(string weatherIcon)
         lv_label_set_text(lbl_weathericon,FA_WEATHER_DROPLET);
         return;
     }
-    
-    if (weatherIcon.find("13") != std::string::npos) {     
+
+    if (weatherIcon.find("13") != std::string::npos) {
         lv_label_set_text(lbl_weathericon,FA_WEATHER_SNOWFLAKES);
         return;
-    }    
+    }
 
-    if (weatherIcon.find("11") != std::string::npos) {     
+    if (weatherIcon.find("11") != std::string::npos) {
         lv_label_set_text(lbl_weathericon,FA_WEATHER_CLOUD_SHOWERS_HEAVY);
         return;
-    }    
+    }
 
-    if (weatherIcon.find("10") != std::string::npos) {     
+    if (weatherIcon.find("10") != std::string::npos) {
         lv_label_set_text(lbl_weathericon,FA_WEATHER_CLOUD_RAIN);
         return;
-    }    
+    }
 
-    if (weatherIcon.find("09") != std::string::npos) {     
+    if (weatherIcon.find("09") != std::string::npos) {
         lv_label_set_text(lbl_weathericon,FA_WEATHER_CLOUD_RAIN);
         return;
-    }    
+    }
 
-    if (weatherIcon.find("04") != std::string::npos) {     
-        lv_label_set_text(lbl_weathericon,FA_WEATHER_CLOUD);
-        return;
-    }   
-
-    if (weatherIcon.find("03") != std::string::npos) {     
+    if (weatherIcon.find("04") != std::string::npos) {
         lv_label_set_text(lbl_weathericon,FA_WEATHER_CLOUD);
         return;
     }
 
-    if (weatherIcon.find("02") != std::string::npos) {     
+    if (weatherIcon.find("03") != std::string::npos) {
         lv_label_set_text(lbl_weathericon,FA_WEATHER_CLOUD);
         return;
     }
 
-    if (weatherIcon.find("01") != std::string::npos) {     
+    if (weatherIcon.find("02") != std::string::npos) {
+        lv_label_set_text(lbl_weathericon,FA_WEATHER_CLOUD);
+        return;
+    }
+
+    if (weatherIcon.find("01") != std::string::npos) {
         lv_label_set_text(lbl_weathericon,FA_WEATHER_SUN);
         return;
     }
@@ -1603,7 +1617,7 @@ static void set_weather_icon(string weatherIcon)
 
     // default
     lv_label_set_text(lbl_weathericon,FA_WEATHER_CLOUD_SHOWERS_HEAVY);
-    lv_obj_set_style_text_color(lbl_weathericon,lv_palette_main(LV_PALETTE_BLUE_GREY),0); 
+    lv_obj_set_style_text_color(lbl_weathericon,lv_palette_main(LV_PALETTE_BLUE_GREY),0);
 
 
 }

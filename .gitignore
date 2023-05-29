@@ -4,5 +4,6 @@ build/
 sdkconfig
 sdkconfig.old
 .vs/
+.idea/
 managed_components/
 cp-deploy.cmd

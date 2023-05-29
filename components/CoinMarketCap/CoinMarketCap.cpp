@@ -47,12 +47,12 @@ static const char* TAG = "CoinMarketCap";
     Free OpenWeatherAPI is available one request per min. We request once every 10mins
 
     We pull realtime weather from the API and dump in a json local cache file (SPIFF/SDCARD/FAT)
-    Then read that file to show in the UI every 5mins. 
+    Then read that file to show in the UI every 5mins.
     If device is disconnected from internet or fails, it will show the last weather update
 */
 
-#define MAX_HTTP_RECV_BUFFER 1024000
-#define MAX_HTTP_OUTPUT_BUFFER 1024000
+#define MAX_HTTP_RECV_BUFFER 2048
+#define MAX_HTTP_OUTPUT_BUFFER 2048
 
 // Move all these to config.json later
 #define WEB_API_URL     CONFIG_COINMARKET_OWM_URL //"pro-api.coinmarketcap.com"
@@ -73,8 +73,8 @@ CoinMarketCap::CoinMarketCap()
     // cfg->load_config();
 }
 
-/* 
- * Get Coins from CoinMarketCap API 
+/*
+ * Get Coins from CoinMarketCap API
  * API call can fail => no wifi / connectivity issues / request limits
  * If fails, data from cache file is used.
 */
@@ -83,14 +83,14 @@ void CoinMarketCap::request_coin_update()
     jsonString = "{}";
 
     // Get coin balance from Bitcoin and update the cache file
-    if (request_json_cg() == ESP_OK) {
+    if (request_json_btc() == ESP_OK) {
         ESP_LOGI(TAG,"Updating and writing BTC info into cache - btc_crypto.json");
         write_json(btc_file_name);    // Save content of jsonString to file if success
     }
     ESP_LOGI(TAG,"Reading - btc_crypto.json");
     read_json(btc_file_name);
     ESP_LOGI(TAG,"Loading - btc_crypto.json");
-    load_cg_json();
+    load_btc_json();
 
     // Get coin track from CoinMarketCap and update the cache file
     if (request_json_cmc() == ESP_OK) {
@@ -121,8 +121,8 @@ void CoinMarketCap::load_btc_json()
 
     balanceinfo = cJSON_GetObjectItem (root, "balance");
     int amount = cJSON_GetObjectItem(balanceinfo,"confirmed")->valueint;
-    Amount = (float) amount / 100000000;
-    
+    Amount = (double) amount / (double) 100000000;
+
     ESP_LOGW(TAG,"BTC Amount: %f", Amount);
     // Cleanup
     cJSON_Delete(root);
@@ -150,7 +150,7 @@ void CoinMarketCap::load_cmc_json()
     Change7d = cJSON_GetObjectItem(quotecoininfo,"percent_change_7d")->valuedouble;
 
     AmountValue = Amount * Price;
-    
+
     ESP_LOGW(TAG,"data: %3.1f$ price / %3.1f changed 1h / %3.1f changed 24h / %3.1f changed 7d",
                                             Price, Change1h,
                                             Change24h, Change7d);
@@ -176,15 +176,14 @@ void CoinMarketCap::load_cg_json()
 		ChartValues[num] = price_element->valuedouble;
         num++;
 	}
-    
-    ESP_LOGW(TAG,"BTC prices: %s", cJSON_Print(pricesinfo));
+
     // Cleanup
     cJSON_Delete(root);
 }
 
 void CoinMarketCap::read_json(string crypto_name)
 {
-    // read json file to string    
+    // read json file to string
     ifstream jsonfile(crypto_name);
     if (!jsonfile.is_open())
     {
@@ -195,7 +194,7 @@ void CoinMarketCap::read_json(string crypto_name)
     jsonString.assign((std::istreambuf_iterator<char>(jsonfile)),
                 (std::istreambuf_iterator<char>()));
 
-    jsonfile.close();    
+    jsonfile.close();
 }
 
 void CoinMarketCap::write_json(string crypto_name)
@@ -209,7 +208,7 @@ void CoinMarketCap::write_json(string crypto_name)
     }
     jsonfile << jsonString;
     jsonfile.flush();
-    jsonfile.close();    
+    jsonfile.close();
 }
 
 /*
@@ -221,7 +220,7 @@ esp_err_t CoinMarketCap::request_json_btc()
     string apiPath = "?derive=segwit";
     string coinUrl = apiURL + CONFIG_COINMARKET_XPUB_ADDRESS + apiPath;
 
-    return CoinMarketCap::request_https_json(true, coinUrl);
+    return request_https_json(coinUrl);
 }
 
 /*
@@ -231,7 +230,7 @@ esp_err_t CoinMarketCap::request_json_cg()
 {
     string coinUrl = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=15&interval=daily";
 
-    return CoinMarketCap::request_https_json(true, coinUrl);
+    return request_https_json(coinUrl);
 }
 
 /*
@@ -243,29 +242,29 @@ esp_err_t CoinMarketCap::request_json_cmc()
     string queryString = WEB_API_PATH "?" + convertString;
     string coinUrl = WEB_API_URL "" + queryString;
 
-    return CoinMarketCap::request_https_json(true, coinUrl);
+    return request_https_json(coinUrl);
 }
 
 /*
     Get CoinMarketCap json using http - sandbox-api.coinmarketcap.com
 */
-esp_err_t CoinMarketCap::request_https_json(bool ssl, string url)
+esp_err_t CoinMarketCap::request_https_json(string coinUrl)
 {
     char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
     int content_length = 0;
 
     jsonString = "";
 
-    ESP_LOGE(TAG,"HTTPS request to URL: %s", url.c_str());
+    ESP_LOGE(TAG,"HTTPS request to URL: %s", coinUrl.c_str());
 
-#if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE && ssl
+#if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
     esp_http_client_config_t config = {
-        .url = url.c_str(),
+        .url = coinUrl.c_str(),
         .crt_bundle_attach = esp_crt_bundle_attach,
     };
 #else
     esp_http_client_config_t config = {
-        .url = url.c_str(),
+        .url = coinUrl.c_str(),
     };
 #endif
 

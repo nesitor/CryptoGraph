@@ -133,8 +133,8 @@ class CoinMarketCap
         float Change1h;
         float Change24h;
         float Change7d;
-        float Amount;
-        float AmountValue;
+        double Amount;
+        double AmountValue;
         double ChartValues[16];
 
         /* Constructor */
@@ -173,12 +173,12 @@ class CoinMarketCap
         /* Write cache json on flash/sdcard */
         void write_json(string crypto_name);
 
-        esp_err_t request_json_cg();        
+        esp_err_t request_json_cg();
         esp_err_t request_json_cmc();
         esp_err_t request_json_btc();
 
-        esp_err_t request_https_json(bool ssl, string url);
-        
+        esp_err_t request_https_json(string coinUrl);
+
     protected:
 
 };
