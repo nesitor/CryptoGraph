@@ -130,7 +130,7 @@ class CoinMarketCap
         string Symbol;     // BTC
         string Quote;      // USD
         float Price;
-        float Change1h;
+        float Change1m;
         float Change24h;
         float Change7d;
         double Amount;

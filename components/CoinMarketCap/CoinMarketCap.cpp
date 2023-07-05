@@ -57,7 +57,7 @@ static const char* TAG = "CoinMarketCap";
 // Move all these to config.json later
 #define WEB_API_URL     CONFIG_COINMARKET_OWM_URL //"pro-api.coinmarketcap.com"
 #define WEB_API_PORT    "80"    // not used unless we need custom port number
-#define WEB_API_PATH    "/v1/cryptocurrency/quotes/latest" //?q=" CONFIG_WEATHER_LOCATION "&units=metric&APPID="
+#define WEB_API_PATH    "/v0/aleph" //?q=" CONFIG_WEATHER_LOCATION "&units=metric&APPID="
 #define WEB_API_KEY     CONFIG_COINMARKET_API_KEY //
 
 CoinMarketCap::CoinMarketCap()
@@ -82,16 +82,6 @@ void CoinMarketCap::request_coin_update()
 {
     jsonString = "{}";
 
-    // Get coin balance from Bitcoin and update the cache file
-    if (request_json_btc() == ESP_OK) {
-        ESP_LOGI(TAG,"Updating and writing BTC info into cache - btc_crypto.json");
-        write_json(btc_file_name);    // Save content of jsonString to file if success
-    }
-    ESP_LOGI(TAG,"Reading - btc_crypto.json");
-    read_json(btc_file_name);
-    ESP_LOGI(TAG,"Loading - btc_crypto.json");
-    load_btc_json();
-
     // Get coin track from CoinMarketCap and update the cache file
     if (request_json_cmc() == ESP_OK) {
         ESP_LOGI(TAG,"Updating and writing CMC info into cache - cmc_crypto.json");
@@ -101,16 +91,6 @@ void CoinMarketCap::request_coin_update()
     read_json(cmc_file_name);
     ESP_LOGI(TAG,"Loading - cmc_crypto.json");
     load_cmc_json();
-
-    // Get coin charts from CoinGecko and update the cache file
-    if (request_json_cg() == ESP_OK) {
-        ESP_LOGI(TAG,"Updating and writing CG info into cache - cg_crypto.json");
-        write_json(cg_file_name);    // Save content of jsonString to file if success
-    }
-    ESP_LOGI(TAG,"Reading - cg_crypto.json");
-    read_json(cg_file_name);
-    ESP_LOGI(TAG,"Loading - cg_crypto.json");
-    load_cg_json();
 }
 
 void CoinMarketCap::load_btc_json()
@@ -131,29 +111,41 @@ void CoinMarketCap::load_btc_json()
 void CoinMarketCap::load_cmc_json()
 {
     ESP_LOGW(TAG,"load_cmc_json() \n%s",jsonString.c_str());
+    cJSON *pair_element = NULL;
+    cJSON *price_element = NULL;
 
     root = cJSON_Parse(jsonString.c_str());
 
     datainfo = cJSON_GetObjectItem(root,"data");
-    coininfo = cJSON_GetObjectItem(datainfo,"BTC");
+    
+    coininfo = cJSON_GetObjectItem(datainfo,"coinPrice");
 
     Name = cJSON_GetObjectItem(coininfo,"name")->valuestring;
     Symbol = cJSON_GetObjectItem(coininfo,"symbol")->valuestring;
     Quote = "USD";
 
-    quoteinfo = cJSON_GetObjectItem(coininfo,"quote");
-    quotecoininfo = cJSON_GetObjectItem(quoteinfo,"USD");
+    Price = cJSON_GetObjectItem(coininfo,"currentPrice")->valuedouble;
+    Change24h = cJSON_GetObjectItem(coininfo,"change24H")->valuedouble;
+    Change7d = cJSON_GetObjectItem(coininfo,"change7D")->valuedouble;
+    Change1m = cJSON_GetObjectItem(coininfo,"change1M")->valuedouble;
 
-    Price = cJSON_GetObjectItem(quotecoininfo,"price")->valuedouble;
-    Change1h = cJSON_GetObjectItem(quotecoininfo,"percent_change_1h")->valuedouble;
-    Change24h = cJSON_GetObjectItem(quotecoininfo,"percent_change_24h")->valuedouble;
-    Change7d = cJSON_GetObjectItem(quotecoininfo,"percent_change_7d")->valuedouble;
+    AmountValue = 1 * Price;
 
-    AmountValue = Amount * Price;
-
-    ESP_LOGW(TAG,"data: %3.1f$ price / %3.1f changed 1h / %3.1f changed 24h / %3.1f changed 7d",
-                                            Price, Change1h,
+    ESP_LOGW(TAG,"data: %3.1f$ price / %3.1f changed 1m / %3.1f changed 24h / %3.1f changed 7d",
+                                            Price, Change1m,
                                             Change24h, Change7d);
+
+    
+    quoteinfo = cJSON_GetObjectItem(datainfo, "marketData");
+    pricesinfo = cJSON_GetObjectItem(quoteinfo, "prices");
+
+    /* iterate over indexs */
+	int num = 0;
+	cJSON_ArrayForEach(pair_element, pricesinfo) {
+        price_element = cJSON_GetArrayItem(pair_element, 1);
+		ChartValues[num] = price_element->valuedouble;
+        num++;
+	}
 
     // Cleanup
     cJSON_Delete(root);
@@ -228,7 +220,7 @@ esp_err_t CoinMarketCap::request_json_btc()
 */
 esp_err_t CoinMarketCap::request_json_cg()
 {
-    string coinUrl = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=15&interval=daily";
+    string coinUrl = "https://api.coingecko.com/api/v3/coins/aleph/market_chart?vs_currency=usd&days=15&interval=daily";
 
     return request_https_json(coinUrl);
 }
@@ -238,7 +230,7 @@ esp_err_t CoinMarketCap::request_json_cg()
 */
 esp_err_t CoinMarketCap::request_json_cmc()
 {
-    string convertString = "convert=USD&symbol=BTC";
+    string convertString = "";
     string queryString = WEB_API_PATH "?" + convertString;
     string coinUrl = WEB_API_URL "" + queryString;
 

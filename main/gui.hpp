@@ -33,7 +33,7 @@ SOFTWARE.
 #include <esp_partition.h>
 
 LV_IMG_DECLARE(dev_bg)
-LV_IMG_DECLARE(img_btc)
+LV_IMG_DECLARE(img_aleph)
 //LV_IMG_DECLARE(tux_logo)
 
 // LV_FONT_DECLARE(font_7seg_64)
@@ -658,6 +658,7 @@ static void tux_panel_wifi(lv_obj_t *parent)
     /* Set data - format of BLE provisioning data */
     // {"ver":"v1","name":"TUX_4AA440","pop":"abcd1234","transport":"ble"}
     const char *qrdata = "https://github.com/nesitor/CryptoChart";
+    // const char *qrdata = "https://tux.sukesh.me/qr/qr.html?data={\"ver\":\"v1\",\"name\":\"TUX_36B138\",\"pop\":\"abcd1234\",\"transport\":\"softap\"}";
     lv_qrcode_update(prov_qr, qrdata, strlen(qrdata));
 
     /*Add a border with bg_color*/
@@ -737,8 +738,11 @@ static void graph_event_handler(lv_event_t * e)
         if(dsc->part == LV_PART_CURSOR && dsc->p1 && dsc->p2 && dsc->p1->y == dsc->p2->y && last_id >= 0) {
             lv_coord_t * data_array = lv_chart_get_y_array(chart, ser);
             lv_coord_t v = data_array[last_id];
+            double print_value = (double) v / (double) 100000;
+            const char* print_v = fmt::format("{:.5f}", print_value).c_str();
+
             char buf[16];
-            lv_snprintf(buf, sizeof(buf), "%d", v);
+            lv_snprintf(buf, sizeof(buf), "%s", print_v);
 
             lv_point_t size;
             lv_txt_get_size(&size, buf, LV_FONT_DEFAULT, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
@@ -802,7 +806,7 @@ void create_page_crypto(lv_obj_t *parent)
     lv_obj_set_style_border_opa(ui_titleCryptoPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_cryptoImage = lv_img_create(ui_titleCryptoPanel);
-    lv_img_set_src(ui_cryptoImage, &img_btc);
+    lv_img_set_src(ui_cryptoImage, &img_aleph);
     lv_obj_set_width(ui_cryptoImage, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_height(ui_cryptoImage, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_x(ui_cryptoImage, -32);
@@ -818,14 +822,14 @@ void create_page_crypto(lv_obj_t *parent)
     lv_obj_set_x(ui_cryptoLabel, 20);
     lv_obj_set_y(ui_cryptoLabel, 0);
     lv_obj_set_align(ui_cryptoLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_cryptoLabel, "Bitcoin / USD");
+    lv_label_set_text(ui_cryptoLabel, "Aleph.IM (ALEPH) / USD");
     lv_obj_set_style_text_color(ui_cryptoLabel, lv_color_hex(0xFF8C00), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_cryptoLabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_priceLabel = lv_label_create(ui_titleCryptoPanel);
     lv_obj_add_style(ui_priceLabel, &style_price, 0);
     lv_obj_add_style(ui_priceLabel, &style_loose, 0);
-    lv_label_set_text(ui_priceLabel, "$ 25.253");
+    lv_label_set_text(ui_priceLabel, "Updating...");
 
     // MSG - MSG_CRYPTO_CHANGED - EVENT
     lv_obj_add_event_cb(ui_cryptoPanel, crypto_event_cb, LV_EVENT_MSG_RECEIVED, NULL);
@@ -850,10 +854,10 @@ void create_page_crypto(lv_obj_t *parent)
     lv_obj_set_x(ui_amountLabel, -10);
     lv_obj_set_y(ui_amountLabel, 0);
     lv_obj_add_style(ui_amountLabel, &style_amount, 0);
-    lv_label_set_text(ui_amountLabel, "0.03536482 BTC | 2.205 US$");
+    lv_label_set_text(ui_amountLabel, "");
 
     ui_changesCryptoPanel1 = lv_obj_create(ui_assetsCryptoPanel);
-    lv_obj_set_width(ui_changesCryptoPanel1, 190);
+    lv_obj_set_width(ui_changesCryptoPanel1, 220);
     lv_obj_set_height(ui_changesCryptoPanel1, 15);
     lv_obj_set_align(ui_changesCryptoPanel1, LV_ALIGN_RIGHT_MID);
     lv_obj_set_flex_flow(ui_changesCryptoPanel1, LV_FLEX_FLOW_ROW_WRAP);
@@ -871,19 +875,10 @@ void create_page_crypto(lv_obj_t *parent)
     lv_obj_set_style_pad_row(ui_changesCryptoPanel1, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_column(ui_changesCryptoPanel1, 2, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    ui_changesLabel1 = lv_label_create(ui_changesCryptoPanel1);
-    lv_obj_add_style(ui_changesLabel1, &style_change, 0);
-    lv_obj_add_style(ui_changesLabel1, &style_win, 0);
-    lv_label_set_text(ui_changesLabel1, "1H:  - 23%");
-
-    ui_divisorLabel1 = lv_label_create(ui_changesCryptoPanel1);
-    lv_obj_add_style(ui_divisorLabel1, &style_change_divisor, 0);
-    lv_label_set_text(ui_divisorLabel1, " | ");
-
     ui_changesLabel2 = lv_label_create(ui_changesCryptoPanel1);
     lv_obj_add_style(ui_changesLabel2, &style_change, 0);
     lv_obj_add_style(ui_changesLabel2, &style_loose, 0);
-    lv_label_set_text(ui_changesLabel2, " 1D: + 1.05%");
+    lv_label_set_text(ui_changesLabel2, "24H: -");
 
     ui_divisorLabel2 = lv_label_create(ui_changesCryptoPanel1);
     lv_obj_add_style(ui_divisorLabel2, &style_change_divisor, 0);
@@ -892,7 +887,16 @@ void create_page_crypto(lv_obj_t *parent)
     ui_changesLabel3 = lv_label_create(ui_changesCryptoPanel1);
     lv_obj_add_style(ui_changesLabel3, &style_change, 0);
     lv_obj_add_style(ui_changesLabel3, &style_win, 0);
-    lv_label_set_text(ui_changesLabel3, "7D: - 50%");
+    lv_label_set_text(ui_changesLabel3, "7D: -");
+
+    ui_divisorLabel1 = lv_label_create(ui_changesCryptoPanel1);
+    lv_obj_add_style(ui_divisorLabel1, &style_change_divisor, 0);
+    lv_label_set_text(ui_divisorLabel1, " | ");
+
+    ui_changesLabel1 = lv_label_create(ui_changesCryptoPanel1);
+    lv_obj_add_style(ui_changesLabel1, &style_change, 0);
+    lv_obj_add_style(ui_changesLabel1, &style_win, 0);
+    lv_label_set_text(ui_changesLabel1, "1M:  -");
 
     // CHART
     chart = lv_chart_create(ui_cryptoPanel);
@@ -911,10 +915,6 @@ void create_page_crypto(lv_obj_t *parent)
     cursor = lv_chart_add_cursor(chart, lv_palette_main(LV_PALETTE_BLUE), LV_DIR_LEFT | LV_DIR_BOTTOM);
 
     ser = lv_chart_add_series(chart, lv_color_hex(0xFF8C00), LV_CHART_AXIS_PRIMARY_Y);
-    uint32_t i;
-    for(i = 0; i <= 15; i++) {
-        lv_chart_set_next_value(chart, ser, lv_rand(20,80));
-    }
 
     lv_obj_set_style_radius(chart, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_color(chart, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -984,7 +984,6 @@ static void show_ui()
     // Show Home Page
     create_page_crypto(content_container);
     create_page_settings(content_container);
-    //create_page_crypto(content_container);
 
     // Load main screen with animation
     //lv_scr_load(screen_container);
@@ -1078,6 +1077,7 @@ static void home_clicked_eventhandler(lv_event_t *e)
     //  Clean the content container first
     lv_obj_clean(content_container);
     create_page_crypto(content_container);
+    lv_msg_send(MSG_PAGE_HOME, NULL);
 }
 
 static void status_clicked_eventhandler(lv_event_t *e)
@@ -1086,6 +1086,7 @@ static void status_clicked_eventhandler(lv_event_t *e)
     //  Clean the content container first
     lv_obj_clean(content_container);
     create_page_settings(content_container);
+    lv_msg_send(MSG_PAGE_SETTINGS, NULL);
     //create_page_crypto(content_container);
 }
 
@@ -1245,11 +1246,11 @@ void crypto_event_cb(lv_event_t * e)
         CoinMarketCap *e_cmc = NULL;
         e_cmc = (CoinMarketCap*)lv_msg_get_payload(m);
 
-        float e_change1h = e_cmc->Change1h;
+        float e_change1m = e_cmc->Change1m;
         float e_change24h = e_cmc->Change24h;
         float e_change7d = e_cmc->Change7d;
 
-        if (e_change1h > 0) {
+        if (e_change1m > 0) {
             lv_obj_add_style(ui_priceLabel, &style_win, 0);
             lv_obj_add_style(ui_changesLabel1, &style_win, 0);
             lv_obj_add_style(ui_amountLabel, &style_win, 0);
@@ -1272,18 +1273,24 @@ void crypto_event_cb(lv_event_t * e)
         }
 
         lv_label_set_text(ui_cryptoLabel,fmt::format("{} ({}) / {}", e_cmc->Name, e_cmc->Symbol, e_cmc->Quote).c_str());
-        lv_label_set_text(ui_priceLabel,fmt::format("$ {:.2f}", e_cmc->Price).c_str());
-        lv_label_set_text(ui_amountLabel,fmt::format("{:.6f} {} | {:.2f} US$", e_cmc->Amount, e_cmc->Symbol, e_cmc->AmountValue).c_str());
-        lv_label_set_text(ui_changesLabel1,fmt::format("1H: {:+.2f}%", e_change1h).c_str());
-        lv_label_set_text(ui_changesLabel2,fmt::format("1D: {:+.2f}%", e_change24h).c_str());
+        lv_label_set_text(ui_priceLabel,fmt::format("$ {:.5f}", e_cmc->Price).c_str());
+        // lv_label_set_text(ui_amountLabel,fmt::format("{:.6f} {} | {:.2f} US$", e_cmc->Amount, e_cmc->Symbol, e_cmc->AmountValue).c_str());
+        lv_label_set_text(ui_changesLabel1,fmt::format("1M: {:+.2f}%", e_change1m).c_str());
+        lv_label_set_text(ui_changesLabel2,fmt::format("24H: {:+.2f}%", e_change24h).c_str());
         lv_label_set_text(ui_changesLabel3,fmt::format("7D: {:+.2f}%", e_change7d).c_str());
 
-        int minim = 0;
-        int maxim = 0;
-        for(int value : e_cmc->ChartValues)
+        double minim = 0;
+        double maxim = 0;
+        for(double value : e_cmc->ChartValues)
         {
-            int fixed_value = value;
-            lv_chart_set_next_value(chart, ser, fixed_value);
+            double fixed_value = value;
+            double print_value = fixed_value;
+            if (print_value < 10) {
+                int int_value = fixed_value * (double) 100000;
+                lv_chart_set_next_value(chart, ser, int_value);
+            } else {
+                lv_chart_set_next_value(chart, ser, (int) print_value);
+            }
             if (fixed_value > maxim) {
                 maxim = fixed_value;
             }
@@ -1291,9 +1298,15 @@ void crypto_event_cb(lv_event_t * e)
                 minim = fixed_value;
             }
         }
-        int max_scale = maxim + (int) ((float) maxim * (float) 0.01);
-        int min_scale = minim - (int) ((float) minim * (float) 0.01);
-        ESP_LOGI(TAG,"Updating chart scale: %d min & %d max", min_scale, max_scale);
+        double max_scale = maxim + (double) ((double) maxim * (double) 0.01);
+        double min_scale = minim - (double) ((double) minim * (double) 0.01);
+
+        if ((max_scale < 10) && (min_scale < 10)) {
+            max_scale = max_scale * (double) 100000;
+            min_scale = min_scale * (double) 100000;
+        }
+
+        ESP_LOGI(TAG,"Updating chart scale: %.5f min & %.5f max", min_scale, max_scale);
         lv_chart_set_range(chart, LV_CHART_AXIS_PRIMARY_Y, min_scale, max_scale);
         lv_chart_set_range(chart, LV_CHART_AXIS_SECONDARY_Y, min_scale, max_scale);
     }

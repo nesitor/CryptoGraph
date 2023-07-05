@@ -374,6 +374,7 @@ static void timer_crypto_callback(lv_timer_t * timer)
     // Update crypto and trigger UI update
     cmc->request_coin_update();
     lv_msg_send(MSG_CRYPTO_CHANGED, cmc);
+    
 }
 
 // Callback to notify App UI change
