@@ -155,6 +155,7 @@ class CoinMarketCap
         string jsonString;
 
         cJSON *root;
+        cJSON *errorinfo;
         cJSON *datainfo;
         cJSON *balanceinfo;
         cJSON *pricesinfo;

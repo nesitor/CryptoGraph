@@ -116,6 +116,12 @@ void CoinMarketCap::load_cmc_json()
 
     root = cJSON_Parse(jsonString.c_str());
 
+    errorinfo = cJSON_GetObjectItem(root,"error")->valuebool;
+
+    if (errorinfo) {
+        return;
+    }
+
     datainfo = cJSON_GetObjectItem(root,"data");
     
     coininfo = cJSON_GetObjectItem(datainfo,"coinPrice");
