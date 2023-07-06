@@ -326,7 +326,7 @@ extern "C" void app_main(void)
     //lv_timer_pause(timer_datetime); // enable only when wifi is connected
 
     // Weather update timer - Once per min (60*1000) or maybe once in 10 mins (10*60*1000)
-    timer_weather = lv_timer_create(timer_weather_callback, WEATHER_UPDATE_INTERVAL,  NULL);
+    // timer_weather = lv_timer_create(timer_weather_callback, WEATHER_UPDATE_INTERVAL,  NULL);
     // Crypto update timer - Once per min (60*1000) or maybe once in 10 mins (10*60*1000)
     timer_crypto = lv_timer_create(timer_crypto_callback, COIN_UPDATE_INTERVAL,  NULL);
 
