@@ -411,14 +411,14 @@ static void create_header(lv_obj_t *parent)
     lv_obj_add_style(icon_wifi, &style_wifi, 0);
 
     // SD CARD
-    icon_storage = lv_label_create(panel_status);
-    lv_label_set_text(icon_storage, LV_SYMBOL_SD_CARD);
-    lv_obj_add_style(icon_storage, &style_storage, 0);
+    // icon_storage = lv_label_create(panel_status);
+    // lv_label_set_text(icon_storage, LV_SYMBOL_SD_CARD);
+    // lv_obj_add_style(icon_storage, &style_storage, 0);
 
     // BATTERY
-    icon_battery = lv_label_create(panel_status);
-    lv_label_set_text(icon_battery, LV_SYMBOL_CHARGE);
-    lv_obj_add_style(icon_battery, &style_battery, 0);
+    // icon_battery = lv_label_create(panel_status);
+    // lv_label_set_text(icon_battery, LV_SYMBOL_CHARGE);
+    // lv_obj_add_style(icon_battery, &style_battery, 0);
 
     lv_obj_add_event_cb(panel_title, home_clicked_eventhandler, LV_EVENT_CLICKED, NULL);
     lv_obj_add_event_cb(panel_status, status_clicked_eventhandler, LV_EVENT_CLICKED, NULL);
@@ -1424,7 +1424,7 @@ static void status_change_cb(void * s, lv_msg_t *m)
         {
             int battery_val = *(int *)lv_msg_get_payload(m);
             //ESP_LOGW(TAG,"[%d] MSG_BATTERY_STATUS %d",msg_id,battery_val);
-            lv_update_battery(battery_val);
+            // lv_update_battery(battery_val);
         }
         break;
         case MSG_DEVICE_INFO:

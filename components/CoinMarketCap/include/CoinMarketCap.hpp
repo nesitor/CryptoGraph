@@ -141,7 +141,7 @@ class CoinMarketCap
         CoinMarketCap();
 
         /* HTTPS request to the Coin API */
-        void request_coin_update();
+        void request_coin_update(bool connected);
 
         /* Handle json response */
 

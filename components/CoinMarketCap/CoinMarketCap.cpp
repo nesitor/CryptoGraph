@@ -78,12 +78,12 @@ CoinMarketCap::CoinMarketCap()
  * API call can fail => no wifi / connectivity issues / request limits
  * If fails, data from cache file is used.
 */
-void CoinMarketCap::request_coin_update()
+void CoinMarketCap::request_coin_update(bool connected)
 {
     jsonString = "{}";
 
     // Get coin track from CoinMarketCap and update the cache file
-    if (request_json_cmc() == ESP_OK) {
+    if (connected == true && request_json_cmc() == ESP_OK) {
         ESP_LOGI(TAG,"Updating and writing CMC info into cache - cmc_crypto.json");
         write_json(cmc_file_name);    // Save content of jsonString to file if success
     }
